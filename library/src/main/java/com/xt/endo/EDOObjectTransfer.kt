@@ -1,7 +1,10 @@
 package com.xt.endo
 
+import com.eclipsesource.v8.V8
+import com.eclipsesource.v8.V8Array
 import com.eclipsesource.v8.V8Object
 import com.eclipsesource.v8.V8Value
+import com.eclipsesource.v8.utils.V8ObjectUtils
 
 /**
  * Created by cuiminghui on 2018/6/11.
@@ -10,6 +13,35 @@ import com.eclipsesource.v8.V8Value
 class EDOObjectTransfer {
 
     companion object {
+
+        fun convertToJSValueWithNSValue(anValue: Any?, context: V8): Any {
+            anValue?.let {
+                (anValue as? Int)?.let { return it }
+                (anValue as? Double)?.let { return it }
+                (anValue as? Float)?.let { return it.toDouble() }
+                (anValue as? String)?.let { return it }
+                (anValue as? Boolean)?.let { return it }
+                (anValue as? EDONativeObject)?.let {
+                    return EDOExporter.sharedExporter.scriptObjectWithObject(it, context)
+                }
+                (anValue as? Map<String, Any>)?.let {
+                    return this.convertToJSDictionaryWithNSDictionary(it, context)
+                }
+                (anValue as? List<*>)?.let {
+                    return this.convertToJSArrayWithNSArray(it, context)
+                }
+            }
+            return V8.getUndefined()
+        }
+
+        fun convertToJSDictionaryWithNSDictionary(nsDictionary: Map<String, Any?>, context: V8): V8Object {
+            val jsDictionary = nsDictionary.mapValues { return@mapValues if (it.value != null) this.convertToJSValueWithNSValue(it.value!!, context) else null }
+            return V8ObjectUtils.toV8Object(context, jsDictionary)
+        }
+
+        fun convertToJSArrayWithNSArray(nsArray: List<*>, context: V8): V8Object {
+            return V8ObjectUtils.toV8Array(context, nsArray.map { this.convertToJSValueWithNSValue(it, context) })
+        }
 
         fun convertToNSValueWithJSValue(anValue: Any, owner: V8Object, eageringType: Class<*>? = null): Any? {
             (anValue as? V8Value)?.let {
@@ -25,11 +57,19 @@ class EDOObjectTransfer {
                 else if (anValue.v8Type == 4) {
                     return anValue as? String ?: ""
                 }
-                else if (anValue.v8Type == 6 && anValue is V8Object) {
-                    (anValue.getObject("_meta_class")?.get("objectRef") as? String)?.let {
-                        return EDOExporter.sharedExporter.nsValueWithObjectRef(it)
-                    }
+                else if (anValue.v8Type == 5 && anValue is V8Array) {
+                    return this.convertToNSArgumentsWithJSArguments(anValue, owner)
                 }
+                else if (anValue.v8Type == 6 && anValue is V8Object) {
+                    val metaClass = anValue.getObject("_meta_class")
+                    if (!metaClass.isUndefined) {
+                        (metaClass.get("objectRef") as? String)?.let {
+                            return EDOExporter.sharedExporter.nsValueWithObjectRef(it)
+                        }
+                    }
+                    return this.convertToNSDictionaryWithJSDictionary(anValue, owner)
+                }
+                else { }
             }
             (anValue as? Int)?.let {
                 if (eageringType == Float::class.java) {
@@ -54,6 +94,32 @@ class EDOObjectTransfer {
             return null
         }
 
+        fun convertToNSValueWithPlainValue(anValue: Any, owner: V8Object, eageringType: Class<*>? = null): Any? {
+            (anValue as? Map<String, Any?>)?.let {
+                (it["_meta_class"] as? Map<String, Any?>)?.let {
+                    val objectRef = it["objectRef"] as? String ?: return anValue
+                    return EDOExporter.sharedExporter.nsValueWithObjectRef(objectRef)
+                }
+                return this.convertToNSValueWithPlainValue(it, owner)
+            }
+            (anValue as? List<Any>)?.let {
+                return it.map { return@map this.convertToNSValueWithPlainValue(it, owner) }
+            }
+            return anValue
+        }
+
+        fun convertToNSDictionaryWithJSDictionary(jsDictionary: V8Object, owner: V8Object): Map<String, Any?> {
+            return V8ObjectUtils.toMap(jsDictionary).mapValues {
+                return@mapValues if (it.value != null) this.convertToNSValueWithPlainValue(it.value!!, owner) else it.value
+            }
+        }
+
+        fun convertToNSArgumentsWithJSArguments(jsArguments: V8Array, owner: V8Object, eageringTypes: List<Class<*>>? = null): List<*> {
+            return (0 until jsArguments.length()).map {
+                val eageringType = if (it < eageringTypes?.count() ?: 0) eageringTypes?.get(it) else null
+                return@map this.convertToNSValueWithJSValue(jsArguments.get(it), owner, eageringType)
+            }
+        }
 
     }
 
