@@ -3,13 +3,13 @@ package com.xt.endo
 import android.content.ComponentCallbacks
 import android.content.Context
 import android.content.res.Configuration
-import android.os.Debug
 import android.os.Handler
-import android.os.Looper
 import com.eclipsesource.v8.V8
 import com.eclipsesource.v8.V8Array
 import com.eclipsesource.v8.V8Object
 import com.eclipsesource.v8.V8Value
+import dalvik.system.DexFile
+import dalvik.system.PathClassLoader
 import java.lang.reflect.Method
 import java.util.*
 
@@ -37,6 +37,7 @@ class EDOExporter {
     private var scriptObjects: MutableMap<String, V8Value> = mutableMapOf()
     private val gcTimer: Timer = Timer()
     private var gcTask: TimerTask? = null
+
     init {
         this.runGC()
     }
@@ -119,6 +120,45 @@ class EDOExporter {
         endoV8Object.release()
     }
 
+    fun exportPackage(pkg: EDOPackage) {
+        pkg.install()
+    }
+
+    fun exportClasses(vararg classes: Class<*>) {
+        classes.forEach { clazz ->
+            clazz.annotations.forEach {
+                (it as? EDOExportClass)?.let {
+                    this.exportClass(clazz, it.name)
+                }
+                (it as? EDOExportExtendingClass)?.let {
+                    this.exportClass(clazz, it.name, it.superName)
+                }
+                (it as? EDOExportProperties)?.let {
+                    it.names.forEach {
+                        this.exportProperty(clazz, it)
+                    }
+                }
+            }
+            clazz.declaredFields.forEach { field ->
+                field.annotations.forEach {
+                    (it as? EDOExportProperty)?.let {
+                        this.exportProperty(clazz, field.name)
+                    }
+                }
+            }
+            clazz.declaredMethods.forEach { method ->
+                method.annotations.forEach {
+                    (it as? EDOExportMethod)?.let {
+                        this.exportMethodToJavaScript(clazz, method.name)
+                    }
+                    (it as? EDOBindMethod)?.let {
+                        this.bindMethodToJavaScript(clazz, method.name)
+                    }
+                }
+            }
+        }
+    }
+
     fun exportClass(clazz: Class<*>, name: String, superName: String = "EDOObject") {
         val exportable = EDOExportable(clazz, name, superName)
         this.exportables = kotlin.run {
@@ -128,7 +168,7 @@ class EDOExporter {
         }
     }
 
-    fun exportInitializer(clazz: Class<*>, initializer: (arguments: List<*>) -> Any) {
+    fun exportInitializer(clazz: Class<*>, initializer: (arguments: List<*>, applicationContext: Context) -> Any) {
         this.exportables.filter { it.value.clazz == clazz }.forEach {
             it.value.initializer = initializer
         }
@@ -169,7 +209,7 @@ class EDOExporter {
 
     fun createInstance(name: String, arguments: V8Array, owner: V8Object): V8Value {
         this.exportables[name]?.let { exportable ->
-            val newInstance = exportable.initializer?.let { it(EDOObjectTransfer.convertToNSArgumentsWithJSArguments(arguments, owner)) } ?: kotlin.run {
+            val newInstance = exportable.initializer?.let { it(EDOObjectTransfer.convertToNSArgumentsWithJSArguments(arguments, owner), this.applicationContext!!) } ?: kotlin.run {
                 return@run try { exportable.clazz.getDeclaredConstructor().newInstance() } catch (e: Exception) { null }
             }
             (newInstance as? EDONativeObject)?.let {
@@ -325,4 +365,16 @@ class EDOExporter {
     }
 
 
+}
+
+fun V8.attach(applicationContext: Context): V8 {
+    EDOExporter.sharedExporter.exportWithContext(this, applicationContext)
+    return this
+}
+
+fun V8.fetchValue(key: String): Any? {
+    val value = this.get(key) as? V8Object ?: return null
+    val returnValue = EDOObjectTransfer.convertToNSValueWithJSValue(value, value)
+    value.release()
+    return returnValue
 }
