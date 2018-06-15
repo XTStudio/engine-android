@@ -1,9 +1,6 @@
 package com.xt.endo
 
-import com.eclipsesource.v8.V8
-import com.eclipsesource.v8.V8Array
-import com.eclipsesource.v8.V8Object
-import com.eclipsesource.v8.V8Value
+import com.eclipsesource.v8.*
 import com.eclipsesource.v8.utils.V8ObjectUtils
 
 /**
@@ -39,6 +36,10 @@ class EDOObjectTransfer {
             return V8ObjectUtils.toV8Object(context, jsDictionary)
         }
 
+        fun convertToJSListWithNSArray(nsArray: List<*>, context: V8): List<Any> {
+            return nsArray.map { this.convertToJSValueWithNSValue(it, context) }
+        }
+
         fun convertToJSArrayWithNSArray(nsArray: List<*>, context: V8): V8Object {
             return V8ObjectUtils.toV8Array(context, nsArray.map { this.convertToJSValueWithNSValue(it, context) })
         }
@@ -64,9 +65,11 @@ class EDOObjectTransfer {
                     val metaClass = anValue.getObject("_meta_class")
                     if (!metaClass.isUndefined) {
                         (metaClass.get("objectRef") as? String)?.let {
+                            metaClass.release()
                             return EDOExporter.sharedExporter.nsValueWithObjectRef(it)
                         }
                     }
+                    metaClass.release()
                     return this.convertToNSDictionaryWithJSDictionary(anValue, owner)
                 }
                 else { }
@@ -117,7 +120,10 @@ class EDOObjectTransfer {
         fun convertToNSArgumentsWithJSArguments(jsArguments: V8Array, owner: V8Object, eageringTypes: List<Class<*>>? = null): List<*> {
             return (0 until jsArguments.length()).map {
                 val eageringType = if (it < eageringTypes?.count() ?: 0) eageringTypes?.get(it) else null
-                return@map this.convertToNSValueWithJSValue(jsArguments.get(it), owner, eageringType)
+                val jsArgument = jsArguments.get(it)
+                val returnValue = this.convertToNSValueWithJSValue(jsArgument, owner, eageringType)
+                (jsArgument as? Releasable)?.release()
+                return@map returnValue
             }
         }
 
