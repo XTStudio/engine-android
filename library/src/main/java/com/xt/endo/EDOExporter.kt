@@ -2,14 +2,13 @@ package com.xt.endo
 
 import android.content.ComponentCallbacks
 import android.content.Context
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Handler
 import com.eclipsesource.v8.V8
 import com.eclipsesource.v8.V8Array
 import com.eclipsesource.v8.V8Object
 import com.eclipsesource.v8.V8Value
-import dalvik.system.DexFile
-import dalvik.system.PathClassLoader
 import java.lang.reflect.Method
 import java.util.*
 
@@ -25,59 +24,40 @@ class EDOExporter {
             field = value
             value?.registerComponentCallbacks(object : ComponentCallbacks {
                 override fun onLowMemory() {
-                    runGC(true)
+//                    runGC(true)
                 }
                 override fun onConfigurationChanged(newConfig: Configuration?) { }
             })
         }
 
+    fun initializer(applicationContext: Context) {
+        if (this.applicationContext == null) {
+            this.applicationContext = applicationContext
+            this.loadPackages()
+        }
+    }
+
+    private fun loadPackages() {
+        var applicationContext = this.applicationContext ?: return
+        val applicationInfo = applicationContext.packageManager.getApplicationInfo(applicationContext.packageName, PackageManager.GET_META_DATA)
+        val metaData = applicationInfo.metaData
+        metaData.keySet().filter { metaData[it] == "EDOPackage" }.forEach { pkgName ->
+            try {
+                val clazz = Class.forName(pkgName)
+                val instance = clazz.getConstructor().newInstance() as? EDOPackage ?: return@forEach
+                instance.install()
+            } catch (e: Exception) {}
+        }
+    }
+
+
     private val activeContexts: MutableSet<V8> = mutableSetOf()
     private var exportables: Map<String, EDOExportable> = mapOf()
-    private var references: MutableMap<String, EDOObjectReference> = mutableMapOf()
-    private var scriptObjects: MutableMap<String, V8Value> = mutableMapOf()
-    private val gcTimer: Timer = Timer()
-    private var gcTask: TimerTask? = null
 
-    init {
-        this.runGC()
-    }
-
-    fun runGC(force: Boolean = false) {
-        val handler = Handler()
-        this.gcTask?.cancel()
-        this.gcTask = object : TimerTask() {
-            override fun run() {
-                handler.post {
-                    if (force || Math.random() * 100 < 20) {
-                        activeContexts.filter { !it.isReleased }.forEach { it.lowMemoryNotification() }
-                    }
-                    else {
-                        this@EDOExporter.runGC()
-                        return@post
-                    }
-                    System.out.println("[EDOExporter] GC Running.")
-                    synchronized(this@EDOExporter, {
-                        val removingKeys = this@EDOExporter.references.filterValues {
-                            return@filterValues it.metaClassManagedValue.runtime.isReleased || it.metaClassManagedValue.isReleased
-                        }
-                        removingKeys.keys.forEach {
-                            this@EDOExporter.references[it]?.value?.deinit()
-                            this@EDOExporter.references.remove(it)
-                            this@EDOExporter.scriptObjects.remove(it)
-                        }
-                        System.out.println("[EDOExporter] ${removingKeys.count()} object released")
-                    })
-                    this@EDOExporter.runGC()
-                }
-            }
-        }
-        this.gcTimer.schedule(this.gcTask, (if (force) 0 else 10000).toLong())
-    }
-
-    fun exportWithContext(context: V8, applicationContext: Context) {
+    fun exportWithContext(context: V8) {
         this.activeContexts.add(context)
-        this.applicationContext = applicationContext
-        var script = ";var __edo_retaining_set = {}; function __edo_retain(anObject){ __edo_retaining_set[anObject] = 1; };function __edo_release(anObject){ delete __edo_retaining_set[anObject]; };var __extends=(this&&this.__extends)||(function(){var extendStatics=Object.setPrototypeOf||({__proto__:[]}instanceof Array&&function(d,b){d.__proto__=b})||function(d,b){for(var p in b)if(b.hasOwnProperty(p))d[p]=b[p]};return function(d,b){extendStatics(d,b);function __(){this.constructor=d}d.prototype=b===null?Object.create(b):(__.prototype=b.prototype,new __())}})();var _EDO_MetaClass = /** @class */ (function () { function _EDO_MetaClass(classname, objectRef) { this.classname = classname; this.objectRef = objectRef; } return _EDO_MetaClass; }());var _EDO_Callback=(function(){function _EDO_Callback(func){this.func=func;this._meta_class={classname:\"__Function\"}}return _EDO_Callback}());var EDOObject=(function(){function EDOObject(){this.__callbacks=[]}EDOObject.prototype.__convertToJSValue=function(parameter){if(typeof parameter===\"function\"){var callback=new _EDO_Callback(parameter);this.__callbacks.push(callback);callback._meta_class.idx=this.__callbacks.length-1;return callback}return parameter};EDOObject.prototype.__invokeCallback=function(idx,args){if(this.__callbacks[idx]){this.__callbacks[idx].func.apply(this,args)}};return EDOObject}());"
+        var script = "var __EDO_SUPERCLASS_TOKEN = '__EDO_SUPERCLASS_TOKEN__';"
+        script += "var __extends=this&&this.__extends||function(){var extendStatics=Object.setPrototypeOf||{__proto__:[]}instanceof Array&&function(d,b){d.__proto__=b}||function(d,b){for(var p in b)if(b.hasOwnProperty(p))d[p]=b[p]};return function(d,b){extendStatics(d,b);function __(){this.constructor=d}d.prototype=b===null?Object.create(b):(__.prototype=b.prototype,new __)}}();(function(exports){\"use strict\";function EventEmitter(){}var proto=EventEmitter.prototype;var originalGlobalValue=exports.EventEmitter;function indexOfListener(listeners,listener){var i=listeners.length;while(i--){if(listeners[i].listener===listener){return i}}return-1}function alias(name){return function aliasClosure(){return this[name].apply(this,arguments)}}proto.getListeners=function getListeners(evt){var events=this._getEvents();var response;var key;if(evt instanceof RegExp){response={};for(key in events){if(events.hasOwnProperty(key)&&evt.test(key)){response[key]=events[key]}}}else{response=events[evt]||(events[evt]=[])}return response};proto.flattenListeners=function flattenListeners(listeners){var flatListeners=[];var i;for(i=0;i<listeners.length;i+=1){flatListeners.push(listeners[i].listener)}return flatListeners};proto.getListenersAsObject=function getListenersAsObject(evt){var listeners=this.getListeners(evt);var response;if(listeners instanceof Array){response={};response[evt]=listeners}return response||listeners};function isValidListener(listener){if(typeof listener===\"function\"||listener instanceof RegExp){return true}else if(listener&&typeof listener===\"object\"){return isValidListener(listener.listener)}else{return false}}proto.addListener=function addListener(evt,listener){if(!isValidListener(listener)){throw new TypeError(\"listener must be a function\")}var listeners=this.getListenersAsObject(evt);var listenerIsWrapped=typeof listener===\"object\";var key;for(key in listeners){if(listeners.hasOwnProperty(key)&&indexOfListener(listeners[key],listener)===-1){listeners[key].push(listenerIsWrapped?listener:{listener:listener,once:false})}}ENDO.addListenerWithNameOwner(evt,this);return this};proto.on=alias(\"addListener\");proto.addOnceListener=function addOnceListener(evt,listener){return this.addListener(evt,{listener:listener,once:true})};proto.once=alias(\"addOnceListener\");proto.defineEvent=function defineEvent(evt){this.getListeners(evt);return this};proto.defineEvents=function defineEvents(evts){for(var i=0;i<evts.length;i+=1){this.defineEvent(evts[i])}return this};proto.removeListener=function removeListener(evt,listener){var listeners=this.getListenersAsObject(evt);var index;var key;for(key in listeners){if(listeners.hasOwnProperty(key)){index=indexOfListener(listeners[key],listener);if(index!==-1){listeners[key].splice(index,1)}}}return this};proto.off=alias(\"removeListener\");proto.addListeners=function addListeners(evt,listeners){return this.manipulateListeners(false,evt,listeners)};proto.removeListeners=function removeListeners(evt,listeners){return this.manipulateListeners(true,evt,listeners)};proto.manipulateListeners=function manipulateListeners(remove,evt,listeners){var i;var value;var single=remove?this.removeListener:this.addListener;var multiple=remove?this.removeListeners:this.addListeners;if(typeof evt===\"object\"&&!(evt instanceof RegExp)){for(i in evt){if(evt.hasOwnProperty(i)&&(value=evt[i])){if(typeof value===\"function\"){single.call(this,i,value)}else{multiple.call(this,i,value)}}}}else{i=listeners.length;while(i--){single.call(this,evt,listeners[i])}}return this};proto.removeEvent=function removeEvent(evt){var type=typeof evt;var events=this._getEvents();var key;if(type===\"string\"){delete events[evt]}else if(evt instanceof RegExp){for(key in events){if(events.hasOwnProperty(key)&&evt.test(key)){delete events[key]}}}else{delete this._events}return this};proto.removeAllListeners=alias(\"removeEvent\");proto.emitEvent=function emitEvent(evt,args){var listenersMap=this.getListenersAsObject(evt);var listeners;var listener;var i;var key;var response;for(key in listenersMap){if(listenersMap.hasOwnProperty(key)){listeners=listenersMap[key].slice(0);for(i=0;i<listeners.length;i++){listener=listeners[i];if(listener.once===true){this.removeListener(evt,listener.listener)}response=listener.listener.apply(this,args||[]);if(response===this._getOnceReturnValue()){this.removeListener(evt,listener.listener)}}}}return this};proto.val=function emitEventWithReturnValue(evt){var args=Array.prototype.slice.call(arguments,1);var listenersMap=this.getListenersAsObject(evt);var listeners;var listener;var i;var key;for(key in listenersMap){if(listenersMap.hasOwnProperty(key)){listeners=listenersMap[key].slice(0);for(i=0;i<listeners.length;i++){listener=listeners[i];if(listener.once===true){this.removeListener(evt,listener.listener)}return listener.listener.apply(this,args||[])}}}return undefined};proto.trigger=alias(\"emitEvent\");proto.emit=function emit(evt){var args=Array.prototype.slice.call(arguments,1);return this.emitEvent(evt,args)};proto.setOnceReturnValue=function setOnceReturnValue(value){this._onceReturnValue=value;return this};proto._getOnceReturnValue=function _getOnceReturnValue(){if(this.hasOwnProperty(\"_onceReturnValue\")){return this._onceReturnValue}else{return true}};proto._getEvents=function _getEvents(){return this._events||(this._events={})};exports.EventEmitter=EventEmitter})(this||{});var _EDO_MetaClass=function(){function _EDO_MetaClass(classname,objectRef){this.classname=classname;this.objectRef=objectRef}return _EDO_MetaClass}();var _EDO_Callback=function(){function _EDO_Callback(func){this.func=func;this._meta_class={classname:\"__Function\"}}return _EDO_Callback}();var EDOObject=function(_super){__extends(EDOObject,_super);function EDOObject(){var _this=_super!==null&&_super.apply(this,arguments)||this;_this.__callbacks=[];return _this}EDOObject.prototype.__convertToJSValue=function(parameter){if(typeof parameter===\"function\"){var callback=new _EDO_Callback(parameter);this.__callbacks.push(callback);callback._meta_class.idx=this.__callbacks.length-1;return callback}else if(parameter instanceof ArrayBuffer){return{_meta_class:{classname:\"__ArrayBuffer\",bytes:Array.from(new Uint8Array(parameter))}}}return parameter};EDOObject.prototype.__invokeCallback=function(idx,args){if(this.__callbacks[idx]){return this.__callbacks[idx].func.apply(this,args)}};return EDOObject}(EventEmitter);"
         val exportables = this.exportables.toMutableMap()
         val exported: MutableList<String> = mutableListOf()
         exported.add("EDOObject")
@@ -88,15 +68,20 @@ class EDOExporter {
                 if (!exported.contains(it.value.superName)) {
                     return@forEach
                 }
-                val constructorScript = "function Initializer(){var _this = _super.call(this, ${it.key}) || this;if(arguments[0]instanceof _EDO_MetaClass){_this._meta_class=arguments[0]}else{var args=[];for(var key in arguments){args.push(_this.__convertToJSValue(arguments[key]))}_this._meta_class=ENDO.createInstance(typeof arguments[0] === \"string\" ? arguments[0] : \"${it.key}\",args,_this);};return _this;}"
-                val propsScript = it.value.exportedProps.map {
-                    return@map "Object.defineProperty(Initializer.prototype,\"${it.replace("edo_", "")}\",{get:function(){return ENDO.valueWithPropertyName(\"$it\",this)},set:function(value){ENDO.setValueWithPropertyName(\"$it\",value,this)},enumerable:false,configurable:true});"
+                val constructorScript = "function Initializer(isParent){var _this = _super.call(this, __EDO_SUPERCLASS_TOKEN) || this;if(arguments[0]instanceof _EDO_MetaClass){_this._meta_class=arguments[0]}else if(isParent !== __EDO_SUPERCLASS_TOKEN){var args=[];for(var key in arguments){args.push(_this.__convertToJSValue(arguments[key]))}_this._meta_class=ENDO.createInstanceWithNameArgumentsOwner(\"${it.key}\",args,_this)}return _this;}"
+                val propsScript = it.value.exportedProps.map { propName ->
+                    if (it.value.readonlyProps.contains(propName)) {
+                        return@map "Object.defineProperty(Initializer.prototype,\"${propName.replace("edo_", "")}\",{get:function(){return ENDO.valueWithPropertyNameOwner(\"$propName\",this)},set:function(value){},enumerable:false,configurable:true});"
+                    }
+                    else {
+                        return@map "Object.defineProperty(Initializer.prototype,\"${propName.replace("edo_", "")}\",{get:function(){return ENDO.valueWithPropertyNameOwner(\"$propName\",this)},set:function(value){ENDO.setValueWithPropertyNameValueOwner(\"$propName\",value,this)},enumerable:false,configurable:true});"
+                    }
                 }.joinToString(";")
                 val bindMethodScript = it.value.bindedMethods.map {
-                    return@map "Initializer.prototype.$it=function(){};Initializer.prototype.__$it=function(){this.$it.apply(this,arguments)};"
+                    return@map ""
                 }.joinToString(";")
                 val methodScript = it.value.exportedMethods.map {
-                    return@map "Initializer.prototype.${it.replace("edo_", "")} = function () {var args=[];for(var key in arguments){args.push(this.__convertToJSValue(arguments[key]))}return ENDO.callMethodWithName(\"$it\", args, this);};"
+                    return@map ""
                 }.joinToString(";")
                 val clazzScript = ";var ${it.key} = /** @class */ (function (_super) {;__extends(Initializer, _super) ;$constructorScript; $propsScript ;$bindMethodScript ;$methodScript;return Initializer; }(${it.value.superName}));"
                 script += clazzScript
@@ -107,10 +92,10 @@ class EDOExporter {
             assert(exportingLoopCount > 0, { return@assert "Did you forgot to export some class superClass?" })
         }
         val endoV8Object = V8Object(context)
-        endoV8Object.registerJavaMethod(this, "createInstance", "createInstance", arrayOf(String::class.java, V8Array::class.java, V8Object::class.java))
-        endoV8Object.registerJavaMethod(this, "valueWithPropertyName", "valueWithPropertyName", arrayOf(String::class.java, V8Object::class.java))
-        endoV8Object.registerJavaMethod(this, "setValueWithPropertyName", "setValueWithPropertyName", arrayOf(String::class.java, Object::class.java, V8Object::class.java))
-        endoV8Object.registerJavaMethod(this, "callMethodWithName", "callMethodWithName", arrayOf(String::class.java, V8Array::class.java, V8Object::class.java))
+        endoV8Object.registerJavaMethod(this, "createInstance", "createInstanceWithNameArgumentsOwner", arrayOf(String::class.java, V8Array::class.java, V8Object::class.java))
+        endoV8Object.registerJavaMethod(this, "valueWithPropertyName", "valueWithPropertyNameOwner", arrayOf(String::class.java, V8Object::class.java))
+        endoV8Object.registerJavaMethod(this, "setValueWithPropertyName", "setValueWithPropertyNameValueOwner", arrayOf(String::class.java, Object::class.java, V8Object::class.java))
+//        endoV8Object.registerJavaMethod(this, "callMethodWithName", "callMethodWithName", arrayOf(String::class.java, V8Array::class.java, V8Object::class.java))
         context.add("ENDO", endoV8Object)
         try {
             context.executeScript(script)
@@ -118,45 +103,6 @@ class EDOExporter {
             e.printStackTrace()
         }
         endoV8Object.release()
-    }
-
-    fun exportPackage(pkg: EDOPackage) {
-        pkg.install()
-    }
-
-    fun exportClasses(vararg classes: Class<*>) {
-        classes.forEach { clazz ->
-            clazz.annotations.forEach {
-                (it as? EDOExportClass)?.let {
-                    this.exportClass(clazz, it.name)
-                }
-                (it as? EDOExportExtendingClass)?.let {
-                    this.exportClass(clazz, it.name, it.superName)
-                }
-                (it as? EDOExportProperties)?.let {
-                    it.names.forEach {
-                        this.exportProperty(clazz, it)
-                    }
-                }
-            }
-            clazz.declaredFields.forEach { field ->
-                field.annotations.forEach {
-                    (it as? EDOExportProperty)?.let {
-                        this.exportProperty(clazz, field.name)
-                    }
-                }
-            }
-            clazz.declaredMethods.forEach { method ->
-                method.annotations.forEach {
-                    (it as? EDOExportMethod)?.let {
-                        this.exportMethodToJavaScript(clazz, method.name)
-                    }
-                    (it as? EDOBindMethod)?.let {
-                        this.bindMethodToJavaScript(clazz, method.name)
-                    }
-                }
-            }
-        }
     }
 
     fun exportClass(clazz: Class<*>, name: String, superName: String = "EDOObject") {
@@ -168,71 +114,61 @@ class EDOExporter {
         }
     }
 
-    fun exportInitializer(clazz: Class<*>, initializer: (arguments: List<*>, applicationContext: Context) -> Any) {
+    fun exportInitializer(clazz: Class<*>, initializer: (arguments: List<*>) -> Any) {
         this.exportables.filter { it.value.clazz == clazz }.forEach {
             it.value.initializer = initializer
         }
     }
 
-    fun exportProperty(clazz: Class<*>, propName: String) {
+    fun exportProperty(clazz: Class<*>, propName: String, readonly: Boolean = false) {
         this.exportables.filter { it.value.clazz == clazz }.forEach {
-            if (it.value.exportedProps.contains(propName)) { return@forEach }
+            if (it.value.exportedProps.contains(propName) || it.value.readonlyProps.contains(propName)) { return@forEach }
             it.value.exportedProps = kotlin.run {
                 val mutable = it.value.exportedProps.toMutableList()
                 mutable.add(propName)
                 return@run mutable.toList()
             }
-        }
-    }
-
-    fun bindMethodToJavaScript(clazz: Class<*>, methodName: String) {
-        this.exportables.filter { it.value.clazz == clazz }.forEach {
-            if (it.value.bindedMethods.contains(methodName)) { return@forEach }
-            it.value.bindedMethods = kotlin.run {
-                val mutable = it.value.bindedMethods.toMutableList()
-                mutable.add(methodName)
-                return@run mutable.toList()
+            if (readonly) {
+                it.value.readonlyProps = kotlin.run {
+                    val mutable = it.value.readonlyProps.toMutableList()
+                    mutable.add(propName)
+                    return@run mutable.toList()
+                }
             }
         }
     }
 
-    fun exportMethodToJavaScript(clazz: Class<*>, methodName: String) {
-        this.exportables.filter { it.value.clazz == clazz }.forEach {
-            if (it.value.exportedMethods.contains(methodName)) { return@forEach }
-            it.value.exportedMethods = kotlin.run {
-                val mutable = it.value.exportedMethods.toMutableList()
-                mutable.add(methodName)
-                return@run mutable.toList()
-            }
-        }
-    }
+//    fun bindMethodToJavaScript(clazz: Class<*>, methodName: String) {
+//        this.exportables.filter { it.value.clazz == clazz }.forEach {
+//            if (it.value.bindedMethods.contains(methodName)) { return@forEach }
+//            it.value.bindedMethods = kotlin.run {
+//                val mutable = it.value.bindedMethods.toMutableList()
+//                mutable.add(methodName)
+//                return@run mutable.toList()
+//            }
+//        }
+//    }
+//
+//    fun exportMethodToJavaScript(clazz: Class<*>, methodName: String) {
+//        this.exportables.filter { it.value.clazz == clazz }.forEach {
+//            if (it.value.exportedMethods.contains(methodName)) { return@forEach }
+//            it.value.exportedMethods = kotlin.run {
+//                val mutable = it.value.exportedMethods.toMutableList()
+//                mutable.add(methodName)
+//                return@run mutable.toList()
+//            }
+//        }
+//    }
 
     fun createInstance(name: String, arguments: V8Array, owner: V8Object): V8Value {
         this.exportables[name]?.let { exportable ->
-            val newInstance = exportable.initializer?.let { it(EDOObjectTransfer.convertToNSArgumentsWithJSArguments(arguments, owner), this.applicationContext!!) } ?: kotlin.run {
+            val newInstance = exportable.initializer?.let { it(EDOObjectTransfer.convertToNSArgumentsWithJSArguments(arguments, owner)) } ?: kotlin.run {
                 return@run try { exportable.clazz.getDeclaredConstructor().newInstance() } catch (e: Exception) { null }
-            }
-            (newInstance as? EDONativeObject)?.let {
-                return createMetaClass(it, owner.runtime, owner)
-            }
+            } ?: return V8.getUndefined()
+            EDOV8ExtRuntime.extRuntime(owner.runtime).storeScriptObject(newInstance, owner)
+            return EDOV8ExtRuntime.extRuntime(owner.runtime).createMetaClass(newInstance)
         }
         return V8.getUndefined()
-    }
-
-    fun createMetaClass(anObject: EDONativeObject, context: V8, owner: V8Object?): V8Value {
-        val objectMetaClass = context.executeObjectScript("new _EDO_MetaClass('${anObject::class.java.name}', '${anObject.objectRef}')")
-        val s = objectMetaClass.twin()
-        s.setWeak()
-        val objectReference = EDOObjectReference(anObject, s)
-        synchronized(this, {
-            this.references[anObject.objectRef] = objectReference
-            owner?.let { owner ->
-                val s = owner.twin()
-                s.setWeak()
-                this.scriptObjects[anObject.objectRef] = s
-            }
-        })
-        return objectMetaClass
     }
 
     fun valueWithPropertyName(name: String, owner: V8Object): Any {
@@ -279,84 +215,52 @@ class EDOExporter {
             } catch (e: Exception) {}
         }
     }
-
-    fun callMethodWithName(name: String, arguments: V8Array, owner: V8Object): Any {
-        try {
-            val ownerObject = EDOObjectTransfer.convertToNSValueWithJSValue(owner, owner)
-            (ownerObject as? EDONativeObject)?.let { ownerObject ->
-                var eageringTypes: List<Class<*>>? = null
-                var eageringMethod: Method? = null
-                ownerObject::class.java.methods.forEach {
-                    if (eageringTypes != null || eageringMethod != null) { return@forEach }
-                    if (it.name.startsWith(name)) {
-                        eageringTypes = it.parameterTypes.toList()
-                        eageringMethod = it
-                    }
-                }
-                val nsArguments = EDOObjectTransfer.convertToNSArgumentsWithJSArguments(arguments, owner, eageringTypes)
-                val returnValue = eageringMethod?.invoke(ownerObject, *nsArguments.toTypedArray())
-                return EDOObjectTransfer.convertToJSValueWithNSValue(returnValue, owner.runtime)
-            }
-            return V8.getUndefined()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return V8.getUndefined()
-        }
-    }
-
-    fun nsValueWithObjectRef(objectRef: String): EDONativeObject? {
-        return this.references[objectRef]?.value
-    }
-
-    fun scriptObjectWithObject(anObject: EDONativeObject, context: V8?): V8Value {
-        this.scriptObjects[anObject.objectRef]?.let { return it }
-        val context = context ?: return V8.getUndefined()
-        this.exportables.forEach {
-            if (it.value.clazz == anObject::class.java) {
-                val scriptObject = context.executeObjectScript("new ${it.value.name}(new _EDO_MetaClass('${it.value.name}', '${anObject.objectRef}'))")
-                val objectMetaClass = scriptObject.get("_meta_class") as? V8Object ?: return@forEach
-                val objectReference = EDOObjectReference(anObject, objectMetaClass.twin())
-                synchronized(this, {
-                    this.references[anObject.objectRef] = objectReference
-                    this.scriptObjects[anObject.objectRef] = scriptObject
-                })
-                return scriptObject
-            }
-        }
-        return V8.getUndefined()
-    }
-
-    fun retain(anObject: EDONativeObject) {
-        this.references[anObject.objectRef]?.let { ref ->
-            if (ref.metaClassManagedValue.isReleased) { return }
-            ref.retainCount++
-            if (ref.retainCount == 1) {
-                this.scriptObjectWithObject(anObject, null)?.let {
-                    if (it.isReleased) { return }
-                    val args = V8Array(it.runtime)
-                    args.push(it)
-                    it.runtime.executeJSFunction("__edo_retain", args)
-                    args.release()
-                }
-            }
-        }
-    }
-
-    fun release(anObject: EDONativeObject) {
-        this.references[anObject.objectRef]?.let { ref ->
-            if (ref.metaClassManagedValue.isReleased) { return }
-            ref.retainCount--
-            if (ref.retainCount <= 0) {
-                this.scriptObjectWithObject(anObject, null)?.let {
-                    if (it.isReleased) { return }
-                    val args = V8Array(it.runtime)
-                    args.push(it)
-                    it.runtime.executeJSFunction("__edo_release", args)
-                    args.release()
-                }
-            }
-        }
-    }
+//
+//    fun callMethodWithName(name: String, arguments: V8Array, owner: V8Object): Any {
+//        try {
+//            val ownerObject = EDOObjectTransfer.convertToNSValueWithJSValue(owner, owner)
+//            (ownerObject as? EDONativeObject)?.let { ownerObject ->
+//                var eageringTypes: List<Class<*>>? = null
+//                var eageringMethod: Method? = null
+//                ownerObject::class.java.methods.forEach {
+//                    if (eageringTypes != null || eageringMethod != null) { return@forEach }
+//                    if (it.name.startsWith(name)) {
+//                        eageringTypes = it.parameterTypes.toList()
+//                        eageringMethod = it
+//                    }
+//                }
+//                val nsArguments = EDOObjectTransfer.convertToNSArgumentsWithJSArguments(arguments, owner, eageringTypes)
+//                val returnValue = eageringMethod?.invoke(ownerObject, *nsArguments.toTypedArray())
+//                return EDOObjectTransfer.convertToJSValueWithNSValue(returnValue, owner.runtime)
+//            }
+//            return V8.getUndefined()
+//        } catch (e: Exception) {
+//            e.printStackTrace()
+//            return V8.getUndefined()
+//        }
+//    }
+//
+//    fun nsValueWithObjectRef(objectRef: String): EDONativeObject? {
+//        return this.references[objectRef]?.value
+//    }
+//
+//    fun scriptObjectWithObject(anObject: EDONativeObject, context: V8?): V8Value {
+//        this.scriptObjects[anObject.objectRef]?.let { return it }
+//        val context = context ?: return V8.getUndefined()
+//        this.exportables.forEach {
+//            if (it.value.clazz == anObject::class.java) {
+//                val scriptObject = context.executeObjectScript("new ${it.value.name}(new _EDO_MetaClass('${it.value.name}', '${anObject.objectRef}'))")
+//                val objectMetaClass = scriptObject.get("_meta_class") as? V8Object ?: return@forEach
+//                val objectReference = EDOObjectReference(anObject, objectMetaClass.twin())
+//                synchronized(this, {
+//                    this.references[anObject.objectRef] = objectReference
+//                    this.scriptObjects[anObject.objectRef] = scriptObject
+//                })
+//                return scriptObject
+//            }
+//        }
+//        return V8.getUndefined()
+//    }
 
     companion object {
 
@@ -367,14 +271,9 @@ class EDOExporter {
 
 }
 
-fun V8.attach(applicationContext: Context): V8 {
-    EDOExporter.sharedExporter.exportWithContext(this, applicationContext)
-    return this
-}
-
-fun V8.fetchValue(key: String): Any? {
-    val value = this.get(key) as? V8Object ?: return null
-    val returnValue = EDOObjectTransfer.convertToNSValueWithJSValue(value, value)
-    value.release()
-    return returnValue
-}
+//fun V8.fetchValue(key: String): Any? {
+//    val value = this.get(key) as? V8Object ?: return null
+//    val returnValue = EDOObjectTransfer.convertToNSValueWithJSValue(value, value)
+//    value.release()
+//    return returnValue
+//}

@@ -18,9 +18,9 @@ class EDOObjectTransfer {
                 (anValue as? Float)?.let { return it.toDouble() }
                 (anValue as? String)?.let { return it }
                 (anValue as? Boolean)?.let { return it }
-                (anValue as? EDONativeObject)?.let {
-                    return EDOExporter.sharedExporter.scriptObjectWithObject(it, context)
-                }
+//                (anValue as? EDONativeObject)?.let {
+//                    return EDOExporter.sharedExporter.scriptObjectWithObject(it, context)
+//                }
                 (anValue as? Map<String, Any>)?.let {
                     return this.convertToJSDictionaryWithNSDictionary(it, context)
                 }
@@ -61,17 +61,17 @@ class EDOObjectTransfer {
                 else if (anValue.v8Type == 5 && anValue is V8Array) {
                     return this.convertToNSArgumentsWithJSArguments(anValue, owner)
                 }
-                else if (anValue.v8Type == 6 && anValue is V8Object) {
-                    val metaClass = anValue.getObject("_meta_class")
-                    if (!metaClass.isUndefined) {
-                        (metaClass.get("objectRef") as? String)?.let {
-                            metaClass.release()
-                            return EDOExporter.sharedExporter.nsValueWithObjectRef(it)
-                        }
-                    }
-                    metaClass.release()
-                    return this.convertToNSDictionaryWithJSDictionary(anValue, owner)
-                }
+//                else if (anValue.v8Type == 6 && anValue is V8Object) {
+//                    val metaClass = anValue.getObject("_meta_class")
+//                    if (!metaClass.isUndefined) {
+//                        (metaClass.get("objectRef") as? String)?.let {
+//                            metaClass.release()
+//                            return EDOExporter.sharedExporter.nsValueWithObjectRef(it)
+//                        }
+//                    }
+//                    metaClass.release()
+//                    return this.convertToNSDictionaryWithJSDictionary(anValue, owner)
+//                }
                 else { }
             }
             (anValue as? Int)?.let {
@@ -101,7 +101,7 @@ class EDOObjectTransfer {
             (anValue as? Map<String, Any?>)?.let {
                 (it["_meta_class"] as? Map<String, Any?>)?.let {
                     val objectRef = it["objectRef"] as? String ?: return anValue
-                    return EDOExporter.sharedExporter.nsValueWithObjectRef(objectRef)
+//                    return EDOExporter.sharedExporter.nsValueWithObjectRef(objectRef)
                 }
                 return this.convertToNSValueWithPlainValue(it, owner)
             }
