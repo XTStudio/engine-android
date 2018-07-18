@@ -4,13 +4,10 @@ import android.content.ComponentCallbacks
 import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.os.Handler
 import com.eclipsesource.v8.V8
 import com.eclipsesource.v8.V8Array
 import com.eclipsesource.v8.V8Object
 import com.eclipsesource.v8.V8Value
-import java.lang.reflect.Method
-import java.util.*
 
 /**
  * Created by cuiminghui on 2018/6/8.
@@ -52,6 +49,7 @@ class EDOExporter {
 
 
     private val activeContexts: MutableSet<V8> = mutableSetOf()
+
     private var exportables: Map<String, EDOExportable> = mapOf()
 
     fun exportWithContext(context: V8) {
@@ -162,7 +160,7 @@ class EDOExporter {
 
     fun createInstance(name: String, arguments: V8Array, owner: V8Object): V8Value {
         this.exportables[name]?.let { exportable ->
-            val newInstance = exportable.initializer?.let { it(EDOObjectTransfer.convertToNSArgumentsWithJSArguments(arguments, owner)) } ?: kotlin.run {
+            val newInstance = exportable.initializer?.let { it(EDOObjectTransfer.convertToJavaListWithJSArray(arguments, owner)) } ?: kotlin.run {
                 return@run try { exportable.clazz.getDeclaredConstructor().newInstance() } catch (e: Exception) { null }
             } ?: return V8.getUndefined()
             EDOV8ExtRuntime.extRuntime(owner.runtime).storeScriptObject(newInstance, owner)
@@ -172,25 +170,25 @@ class EDOExporter {
     }
 
     fun valueWithPropertyName(name: String, owner: V8Object): Any {
-        EDOObjectTransfer.convertToNSValueWithJSValue(owner, owner)?.let { ownerObject ->
+        EDOObjectTransfer.convertToJavaObjectWithJSValue(owner, owner)?.let { ownerObject ->
             try {
                 val returnValue = ownerObject::class.java.getMethod("get" + name.substring(0, 1).toUpperCase() + name.substring(1)).invoke(ownerObject)
-                return EDOObjectTransfer.convertToJSValueWithNSValue(returnValue, owner.runtime)
+                return EDOObjectTransfer.convertToJSValueWithJavaValue(returnValue, owner.runtime)
             } catch (e: Exception) { }
             try {
                 val returnValue = ownerObject::class.java.getField("m" + name.substring(0, 1).toUpperCase() + name.substring(1)).get(ownerObject)
-                return EDOObjectTransfer.convertToJSValueWithNSValue(returnValue, owner.runtime)
+                return EDOObjectTransfer.convertToJSValueWithJavaValue(returnValue, owner.runtime)
             } catch (e: Exception) { }
             try {
                 val returnValue = ownerObject::class.java.getField(name).get(ownerObject)
-                return EDOObjectTransfer.convertToJSValueWithNSValue(returnValue, owner.runtime)
+                return EDOObjectTransfer.convertToJSValueWithJavaValue(returnValue, owner.runtime)
             } catch (e: Exception) { }
         }
         return V8.getUndefined()
     }
 
     fun setValueWithPropertyName(name: String, value: Object, owner: V8Object) {
-        EDOObjectTransfer.convertToNSValueWithJSValue(owner, owner)?.let { ownerObject ->
+        EDOObjectTransfer.convertToJavaObjectWithJSValue(owner, owner)?.let { ownerObject ->
             var eageringType: Class<*>? = null
             val setterName = "set" + name.substring(0, 1).toUpperCase() + name.substring(1)
             try {
@@ -200,7 +198,7 @@ class EDOExporter {
                     }
                 }
             } catch (e: Exception) {}
-            val nsValue = EDOObjectTransfer.convertToNSValueWithJSValue(value, owner, eageringType) ?: return
+            val nsValue = EDOObjectTransfer.convertToJavaObjectWithJSValue(value, owner, eageringType) ?: return
             try {
                 ownerObject::class.java.getMethod("set" + name.substring(0, 1).toUpperCase() + name.substring(1), eageringType ?: nsValue::class.java).invoke(ownerObject, nsValue)
                 return
@@ -218,7 +216,7 @@ class EDOExporter {
 //
 //    fun callMethodWithName(name: String, arguments: V8Array, owner: V8Object): Any {
 //        try {
-//            val ownerObject = EDOObjectTransfer.convertToNSValueWithJSValue(owner, owner)
+//            val ownerObject = EDOObjectTransfer.convertToJavaObjectWithJSValue(owner, owner)
 //            (ownerObject as? EDONativeObject)?.let { ownerObject ->
 //                var eageringTypes: List<Class<*>>? = null
 //                var eageringMethod: Method? = null
@@ -229,9 +227,9 @@ class EDOExporter {
 //                        eageringMethod = it
 //                    }
 //                }
-//                val nsArguments = EDOObjectTransfer.convertToNSArgumentsWithJSArguments(arguments, owner, eageringTypes)
+//                val nsArguments = EDOObjectTransfer.convertToJavaListWithJSArray(arguments, owner, eageringTypes)
 //                val returnValue = eageringMethod?.invoke(ownerObject, *nsArguments.toTypedArray())
-//                return EDOObjectTransfer.convertToJSValueWithNSValue(returnValue, owner.runtime)
+//                return EDOObjectTransfer.convertToJSValueWithJavaValue(returnValue, owner.runtime)
 //            }
 //            return V8.getUndefined()
 //        } catch (e: Exception) {
@@ -240,27 +238,14 @@ class EDOExporter {
 //        }
 //    }
 //
-//    fun nsValueWithObjectRef(objectRef: String): EDONativeObject? {
-//        return this.references[objectRef]?.value
-//    }
-//
-//    fun scriptObjectWithObject(anObject: EDONativeObject, context: V8?): V8Value {
-//        this.scriptObjects[anObject.objectRef]?.let { return it }
-//        val context = context ?: return V8.getUndefined()
-//        this.exportables.forEach {
-//            if (it.value.clazz == anObject::class.java) {
-//                val scriptObject = context.executeObjectScript("new ${it.value.name}(new _EDO_MetaClass('${it.value.name}', '${anObject.objectRef}'))")
-//                val objectMetaClass = scriptObject.get("_meta_class") as? V8Object ?: return@forEach
-//                val objectReference = EDOObjectReference(anObject, objectMetaClass.twin())
-//                synchronized(this, {
-//                    this.references[anObject.objectRef] = objectReference
-//                    this.scriptObjects[anObject.objectRef] = scriptObject
-//                })
-//                return scriptObject
-//            }
-//        }
-//        return V8.getUndefined()
-//    }
+    fun javaObjectWithObjectRef(objectRef: String): Any? {
+        return EDOV8ExtRuntime.javaObjectWithObjectRef(objectRef)
+    }
+
+    fun scriptObjectWithObject(anObject: Any, context: V8?): V8Value {
+        val context = context ?: return V8.getUndefined()
+        return EDOV8ExtRuntime.extRuntime(context).scriptObjectWithJavaObject(anObject)
+    }
 
     companion object {
 
@@ -273,7 +258,7 @@ class EDOExporter {
 
 //fun V8.fetchValue(key: String): Any? {
 //    val value = this.get(key) as? V8Object ?: return null
-//    val returnValue = EDOObjectTransfer.convertToNSValueWithJSValue(value, value)
+//    val returnValue = EDOObjectTransfer.convertToJavaObjectWithJSValue(value, value)
 //    value.release()
 //    return returnValue
 //}
