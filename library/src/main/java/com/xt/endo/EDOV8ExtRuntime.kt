@@ -35,8 +35,9 @@ class EDOV8ExtRuntime(val value: WeakReference<V8>) {
         return runtime.executeObjectScript("new _EDO_MetaClass('${anObject::class.java.name}', '${anObject.edo_objectRef()}')")
     }
 
-    fun scriptObjectWithJavaObject(anObject: Any): V8Value {
+    fun scriptObjectWithJavaObject(anObject: Any, createdIfNeed: Boolean = true): V8Value {
         this.soManagedValue[anObject]?.takeIf { !it.isReleased }?.let { return it }
+        if (!createdIfNeed) { return V8.getUndefined() }
         val context = this.value.get() ?: return V8.getUndefined()
         var target: EDOExportable? = null
         var forEachEnded = false

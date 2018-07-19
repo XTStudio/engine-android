@@ -78,7 +78,7 @@ class EDOExporter {
                     }
                 }.joinToString(";")
                 val bindMethodScript = it.value.bindedMethods.map {
-                    return@map ""
+                    return@map "Initializer.prototype.$it=function(){};Initializer.prototype.__$it=function(){this.$it.apply(this,arguments)};"
                 }.joinToString(";")
                 val methodScript = it.value.exportedMethods.map {
                     return@map "Initializer.prototype.${it.value} = function () {var args=[];for(var key in arguments){args.push(this.__convertToJSValue(arguments[key]))}return ENDO.callMethodWithNameArgumentsOwner(\"${it.key}\", args, this);};"
@@ -96,6 +96,7 @@ class EDOExporter {
         endoV8Object.registerJavaMethod(this, "valueWithPropertyName", "valueWithPropertyNameOwner", arrayOf(String::class.java, V8Object::class.java))
         endoV8Object.registerJavaMethod(this, "setValueWithPropertyName", "setValueWithPropertyNameValueOwner", arrayOf(String::class.java, Object::class.java, V8Object::class.java))
         endoV8Object.registerJavaMethod(this, "callMethodWithName", "callMethodWithNameArgumentsOwner", arrayOf(String::class.java, V8Array::class.java, V8Object::class.java))
+        endoV8Object.registerJavaMethod(this, "addListenerWithName", "addListenerWithNameOwner", arrayOf(String::class.java, V8Object::class.java))
         context.add("ENDO", endoV8Object)
         try {
             context.executeScript(script)
@@ -138,17 +139,17 @@ class EDOExporter {
         }
     }
 
-//    fun bindMethodToJavaScript(clazz: Class<*>, methodName: String) {
-//        this.exportables.filter { it.value.clazz == clazz }.forEach {
-//            if (it.value.bindedMethods.contains(methodName)) { return@forEach }
-//            it.value.bindedMethods = kotlin.run {
-//                val mutable = it.value.bindedMethods.toMutableList()
-//                mutable.add(methodName)
-//                return@run mutable.toList()
-//            }
-//        }
-//    }
-//
+    fun bindMethodToJavaScript(clazz: Class<*>, methodName: String) {
+        this.exportables.filter { it.value.clazz == clazz }.forEach {
+            if (it.value.bindedMethods.contains(methodName)) { return@forEach }
+            it.value.bindedMethods = kotlin.run {
+                val mutable = it.value.bindedMethods.toMutableList()
+                mutable.add(methodName)
+                return@run mutable.toList()
+            }
+        }
+    }
+
     fun exportMethodToJavaScript(clazz: Class<*>, methodName: String, aliasName: String = methodName) {
         this.exportables.filter { it.value.clazz == clazz }.forEach {
             if (it.value.exportedMethods.contains(methodName)) { return@forEach }
@@ -240,6 +241,14 @@ class EDOExporter {
         }
     }
 
+    fun addListenerWithName(name: String, owner: V8Object) {
+        v8CurrentContext = owner.runtime
+        val ownerObject = EDOObjectTransfer.convertToJavaObjectWithJSValue(owner, owner) ?: return
+        val values = (EDOJavaHelper.listeningEvents[ownerObject] ?: setOf()).toMutableSet()
+        values.add(name)
+        EDOJavaHelper.listeningEvents[ownerObject] = values.toSet()
+    }
+
     fun javaObjectWithObjectRef(objectRef: String): Any? {
         return EDOV8ExtRuntime.javaObjectWithObjectRef(objectRef)
     }
@@ -247,6 +256,10 @@ class EDOExporter {
     fun scriptObjectWithObject(anObject: Any, context: V8?): V8Value {
         val context = context ?: return V8.getUndefined()
         return EDOV8ExtRuntime.extRuntime(context).scriptObjectWithJavaObject(anObject)
+    }
+
+    fun scriptObjectsWithObject(anObject: Any): List<V8Value> {
+        return this.activeContexts.map { return@map EDOV8ExtRuntime.extRuntime(it).scriptObjectWithJavaObject(anObject, false) }
     }
 
     companion object {

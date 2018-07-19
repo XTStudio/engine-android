@@ -22,6 +22,14 @@ class SamplePackage : EDOPackage() {
         exporter.exportProperty(FooObject::class.java, "floatValue")
         exporter.exportClass(BarObject::class.java, "BarObject", "FooObject")
         exporter.exportProperty(BarObject::class.java, "intValue")
+        exporter.exportInitializer(BarObject::class.java, {
+            val instance = BarObject()
+            if (0 < it.count() && it[0] is Number) {
+                instance.intValue = (it[0] as Number).toInt()
+            }
+            return@exportInitializer instance
+        })
+        exporter.bindMethodToJavaScript(BarObject::class.java, "bindTest")
     }
 
     private fun installPropertyTestObject() {

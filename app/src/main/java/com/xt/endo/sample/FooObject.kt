@@ -5,8 +5,6 @@ package com.xt.endo.sample
  */
 open class FooObject {
 
-    var intValue: Int = 0
-
-    var floatValue: Float = 0.0f
+    var floatValue: Float = 0.1f
 
 }

@@ -46,7 +46,7 @@ class EDOObjectTransfer {
             return V8ObjectUtils.toV8Array(context, javaList.map { this.convertToJSValueWithJavaValue(it, context) })
         }
 
-        fun convertToJavaObjectWithJSValue(anValue: Any, owner: V8Object, eageringType: Class<*>? = null): Any? {
+        fun convertToJavaObjectWithJSValue(anValue: Any, owner: V8Object?, eageringType: Class<*>? = null): Any? {
             (anValue as? V8Value)?.let {
                 if (anValue.v8Type == 1) {
                     return anValue as? Int ?: 0
@@ -107,7 +107,7 @@ class EDOObjectTransfer {
             return null
         }
 
-        fun convertToJavaObjectWithPlainValue(anValue: Any, owner: V8Object, eageringType: Class<*>? = null): Any? {
+        fun convertToJavaObjectWithPlainValue(anValue: Any, owner: V8Object?, eageringType: Class<*>? = null): Any? {
             (anValue as? Map<String, Any?>)?.let {
                 (it["_meta_class"] as? Map<String, Any?>)?.let {
                     val objectRef = it["objectRef"] as? String ?: return anValue
@@ -121,13 +121,13 @@ class EDOObjectTransfer {
             return anValue
         }
 
-        fun convertToJavaMapWithJSDictionary(jsDictionary: V8Object, owner: V8Object): Map<String, Any?> {
+        fun convertToJavaMapWithJSDictionary(jsDictionary: V8Object, owner: V8Object?): Map<String, Any?> {
             return V8ObjectUtils.toMap(jsDictionary).mapValues {
                 return@mapValues if (it.value != null) this.convertToJavaObjectWithPlainValue(it.value!!, owner) else it.value
             }
         }
 
-        fun convertToJavaListWithJSArray(jsArray: V8Array, owner: V8Object, eageringTypes: List<Class<*>>? = null): List<*> {
+        fun convertToJavaListWithJSArray(jsArray: V8Array, owner: V8Object?, eageringTypes: List<Class<*>>? = null): List<*> {
             return (0 until jsArray.length()).map {
                 val eageringType = if (it < eageringTypes?.count() ?: 0) eageringTypes?.get(it) else null
                 val jsArgument = jsArray.get(it)
