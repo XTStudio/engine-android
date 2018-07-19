@@ -54,6 +54,8 @@ class EDOExporter {
     internal var exportables: Map<String, EDOExportable> = mapOf()
         private set
 
+    private var exportedConstants: Map<String, Any> = mapOf()
+
     fun exportWithContext(context: V8) {
         this.activeContexts.add(context)
         var script = "var __EDO_SUPERCLASS_TOKEN = '__EDO_SUPERCLASS_TOKEN__';"
@@ -65,6 +67,13 @@ class EDOExporter {
         while (exportables.count() > 0) {
             exportingLoopCount = 0
             exportables.toMap().forEach {
+                if (it.value.superName == "ENUM") {
+                    script += it.value.exportedScripts.firstOrNull() ?: ""
+                    exported.add(it.value.name)
+                    exportables.remove(it.key)
+                    exportingLoopCount++
+                    return@forEach
+                }
                 if (!exported.contains(it.value.superName)) {
                     return@forEach
                 }
@@ -102,6 +111,14 @@ class EDOExporter {
             context.executeScript(script)
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+        this.exportedConstants.forEach {
+            val value = EDOObjectTransfer.convertToJSValueWithJavaValue(it.value, context)
+            (value as? Int)?.let { value -> context.add(it.key, value) }
+            (value as? Double)?.let { value -> context.add(it.key, value) }
+            (value as? String)?.let { value -> context.add(it.key, value) }
+            (value as? Boolean)?.let { value -> context.add(it.key, value) }
+            (value as? V8Value)?.let { value -> context.add(it.key, value) }
         }
         endoV8Object.release()
     }
@@ -158,6 +175,36 @@ class EDOExporter {
                 mutable[methodName] = aliasName
                 return@run mutable.toMap()
             }
+        }
+    }
+
+    fun exportEnum(name: String, values: Map<String, Any>) {
+        val exportable = EDOExportable(Any::class.java, name, "ENUM")
+        exportable.exportedScripts = listOf(
+                "var $name;(function ($name) {${
+                values.map {
+                    if (it.value is Number) {
+                        return@map "$name[$name[\"${it.key}\"] = ${it.value}] = \"${it.key}\";"
+                    }
+                    else if (it.value is String) {
+                        return@map "$name[$name[\"${it.key}\"] = \"${it.value}\"] = \"${it.key}\";"
+                    }
+                    return@map ""
+                }.joinToString(";")
+                }})($name || ($name = {}));"
+        )
+        this.exportables = kotlin.run {
+            val mutable = this.exportables.toMutableMap()
+            mutable[name] = exportable
+            return@run mutable.toMap()
+        }
+    }
+
+    fun exportConst(name: String, value: Any) {
+        this.exportedConstants = kotlin.run {
+            val exportedConstants = this.exportedConstants.toMutableMap()
+            exportedConstants[name] = value
+            return@run exportedConstants.toMap()
         }
     }
 
