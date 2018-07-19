@@ -37,6 +37,30 @@ class EDOV8ExtRuntime(val value: WeakReference<V8>) {
 
     fun scriptObjectWithJavaObject(anObject: Any): V8Value {
         this.soManagedValue[anObject]?.takeIf { !it.isReleased }?.let { return it }
+        val context = this.value.get() ?: return V8.getUndefined()
+        var target: EDOExportable? = null
+        var forEachEnded = false
+        EDOExporter.sharedExporter.exportables.forEach {
+            if (forEachEnded) { return@forEach }
+            if (it.value.clazz == anObject::class.java) {
+                target = it.value
+                forEachEnded = true
+                return@forEach
+            }
+            else if (it.value.clazz.isAssignableFrom(anObject::class.java)) {
+                if (target?.clazz?.isAssignableFrom(it.value.clazz) == true) {
+                    target = it.value
+                }
+                else if (target == null) {
+                    target = it.value
+                }
+            }
+        }
+        target?.let { target ->
+            val scriptObject = context.executeObjectScript("new ${target.name}(new _EDO_MetaClass('${target.name}', '${anObject.edo_objectRef()}'))")
+            soManagedValue[anObject] = scriptObject.twin().setWeak() as? V8Object
+            return scriptObject
+        }
         return V8.getUndefined()
     }
 

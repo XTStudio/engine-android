@@ -13,6 +13,15 @@ class SamplePackage : EDOPackage() {
     override fun install() {
         super.install()
         installPropertyTestObject()
+        installObjectTestObjects()
+        installReturnTestObject()
+    }
+
+    private fun installObjectTestObjects() {
+        exporter.exportClass(FooObject::class.java, "FooObject")
+        exporter.exportProperty(FooObject::class.java, "floatValue")
+        exporter.exportClass(BarObject::class.java, "BarObject", "FooObject")
+        exporter.exportProperty(BarObject::class.java, "intValue")
     }
 
     private fun installPropertyTestObject() {
@@ -29,7 +38,28 @@ class SamplePackage : EDOPackage() {
         exporter.exportProperty(clazz, "arrayValue")
         exporter.exportProperty(clazz, "dictValue")
         exporter.exportProperty(clazz, "nilValue")
-        exporter.exportProperty(clazz, "readonlyIntValue")
+        exporter.exportProperty(clazz, "objectValue")
+        exporter.exportProperty(clazz, "readonlyIntValue", true)
+    }
+
+    private fun installReturnTestObject() {
+        val clazz = ReturnTestObject::class.java
+        exporter.exportClass(clazz, "ReturnTestObject")
+        exporter.exportMethodToJavaScript(clazz, "intValue")
+        exporter.exportMethodToJavaScript(clazz, "floatValue")
+        exporter.exportMethodToJavaScript(clazz, "doubleValue")
+        exporter.exportMethodToJavaScript(clazz, "boolValue")
+        exporter.exportMethodToJavaScript(clazz, "rectValue")
+        exporter.exportMethodToJavaScript(clazz, "sizeValue")
+        exporter.exportMethodToJavaScript(clazz, "affineTransformValue")
+        exporter.exportMethodToJavaScript(clazz, "stringValue")
+        exporter.exportMethodToJavaScript(clazz, "arrayValue")
+        exporter.exportMethodToJavaScript(clazz, "dictValue")
+        exporter.exportMethodToJavaScript(clazz, "nilValue")
+        exporter.exportMethodToJavaScript(clazz, "jsValue")
+        exporter.exportMethodToJavaScript(clazz, "objectValue")
+        exporter.exportMethodToJavaScript(clazz, "unexportdClassValue")
+        exporter.exportMethodToJavaScript(clazz, "errorValue")
     }
 
 }

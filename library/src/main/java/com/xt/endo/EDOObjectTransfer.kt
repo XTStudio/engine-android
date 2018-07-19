@@ -2,6 +2,7 @@ package com.xt.endo
 
 import com.eclipsesource.v8.*
 import com.eclipsesource.v8.utils.V8ObjectUtils
+import java.lang.Error
 
 /**
  * Created by cuiminghui on 2018/6/11.
@@ -13,20 +14,25 @@ class EDOObjectTransfer {
 
         fun convertToJSValueWithJavaValue(anValue: Any?, context: V8): Any {
             anValue?.let {
+                (anValue as? V8Value)?.let { return it }
                 (anValue as? Int)?.let { return it }
                 (anValue as? Double)?.let { return it }
                 (anValue as? Float)?.let { return it.toDouble() }
                 (anValue as? String)?.let { return it }
                 (anValue as? Boolean)?.let { return it }
-//                (anValue as? EDONativeObject)?.let {
-//                    return EDOExporter.sharedExporter.scriptObjectWithObject(it, context)
-//                }
                 (anValue as? Map<String, Any>)?.let {
                     return this.convertToJSDictionaryWithJavaMap(it, context)
                 }
                 (anValue as? List<*>)?.let {
                     return this.convertToJSArrayWithJavaList(it, context)
                 }
+                (anValue as? EDOStruct)?.let {
+                    return it.toJSObject(context)
+                }
+                (anValue as? Error)?.let {
+                    return context.executeObjectScript("new Error('${it.message ?: ""}')")
+                }
+                return EDOExporter.sharedExporter.scriptObjectWithObject(it, context)
             }
             return V8.getUndefined()
         }

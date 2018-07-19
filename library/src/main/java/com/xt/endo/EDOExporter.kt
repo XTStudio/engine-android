@@ -8,6 +8,7 @@ import com.eclipsesource.v8.V8
 import com.eclipsesource.v8.V8Array
 import com.eclipsesource.v8.V8Object
 import com.eclipsesource.v8.V8Value
+import java.lang.reflect.Method
 
 /**
  * Created by cuiminghui on 2018/6/8.
@@ -50,7 +51,8 @@ class EDOExporter {
 
     private val activeContexts: MutableSet<V8> = mutableSetOf()
 
-    private var exportables: Map<String, EDOExportable> = mapOf()
+    internal var exportables: Map<String, EDOExportable> = mapOf()
+        private set
 
     fun exportWithContext(context: V8) {
         this.activeContexts.add(context)
@@ -79,7 +81,7 @@ class EDOExporter {
                     return@map ""
                 }.joinToString(";")
                 val methodScript = it.value.exportedMethods.map {
-                    return@map ""
+                    return@map "Initializer.prototype.${it.value} = function () {var args=[];for(var key in arguments){args.push(this.__convertToJSValue(arguments[key]))}return ENDO.callMethodWithNameArgumentsOwner(\"${it.key}\", args, this);};"
                 }.joinToString(";")
                 val clazzScript = ";var ${it.key} = /** @class */ (function (_super) {;__extends(Initializer, _super) ;$constructorScript; $propsScript ;$bindMethodScript ;$methodScript;return Initializer; }(${it.value.superName}));"
                 script += clazzScript
@@ -93,7 +95,7 @@ class EDOExporter {
         endoV8Object.registerJavaMethod(this, "createInstance", "createInstanceWithNameArgumentsOwner", arrayOf(String::class.java, V8Array::class.java, V8Object::class.java))
         endoV8Object.registerJavaMethod(this, "valueWithPropertyName", "valueWithPropertyNameOwner", arrayOf(String::class.java, V8Object::class.java))
         endoV8Object.registerJavaMethod(this, "setValueWithPropertyName", "setValueWithPropertyNameValueOwner", arrayOf(String::class.java, Object::class.java, V8Object::class.java))
-//        endoV8Object.registerJavaMethod(this, "callMethodWithName", "callMethodWithName", arrayOf(String::class.java, V8Array::class.java, V8Object::class.java))
+        endoV8Object.registerJavaMethod(this, "callMethodWithName", "callMethodWithNameArgumentsOwner", arrayOf(String::class.java, V8Array::class.java, V8Object::class.java))
         context.add("ENDO", endoV8Object)
         try {
             context.executeScript(script)
@@ -147,18 +149,19 @@ class EDOExporter {
 //        }
 //    }
 //
-//    fun exportMethodToJavaScript(clazz: Class<*>, methodName: String) {
-//        this.exportables.filter { it.value.clazz == clazz }.forEach {
-//            if (it.value.exportedMethods.contains(methodName)) { return@forEach }
-//            it.value.exportedMethods = kotlin.run {
-//                val mutable = it.value.exportedMethods.toMutableList()
-//                mutable.add(methodName)
-//                return@run mutable.toList()
-//            }
-//        }
-//    }
+    fun exportMethodToJavaScript(clazz: Class<*>, methodName: String, aliasName: String = methodName) {
+        this.exportables.filter { it.value.clazz == clazz }.forEach {
+            if (it.value.exportedMethods.contains(methodName)) { return@forEach }
+            it.value.exportedMethods = kotlin.run {
+                val mutable = it.value.exportedMethods.toMutableMap()
+                mutable[methodName] = aliasName
+                return@run mutable.toMap()
+            }
+        }
+    }
 
     fun createInstance(name: String, arguments: V8Array, owner: V8Object): V8Value {
+        v8CurrentContext = owner.runtime
         this.exportables[name]?.let { exportable ->
             val newInstance = exportable.initializer?.let { it(EDOObjectTransfer.convertToJavaListWithJSArray(arguments, owner)) } ?: kotlin.run {
                 return@run try { exportable.clazz.getDeclaredConstructor().newInstance() } catch (e: Exception) { null }
@@ -170,6 +173,7 @@ class EDOExporter {
     }
 
     fun valueWithPropertyName(name: String, owner: V8Object): Any {
+        v8CurrentContext = owner.runtime
         EDOObjectTransfer.convertToJavaObjectWithJSValue(owner, owner)?.let { ownerObject ->
             try {
                 val returnValue = ownerObject::class.java.getMethod("get" + name.substring(0, 1).toUpperCase() + name.substring(1)).invoke(ownerObject)
@@ -188,6 +192,7 @@ class EDOExporter {
     }
 
     fun setValueWithPropertyName(name: String, value: Object, owner: V8Object) {
+        v8CurrentContext = owner.runtime
         EDOObjectTransfer.convertToJavaObjectWithJSValue(owner, owner)?.let { ownerObject ->
             var eageringType: Class<*>? = null
             val setterName = "set" + name.substring(0, 1).toUpperCase() + name.substring(1)
@@ -213,31 +218,28 @@ class EDOExporter {
             } catch (e: Exception) {}
         }
     }
-//
-//    fun callMethodWithName(name: String, arguments: V8Array, owner: V8Object): Any {
-//        try {
-//            val ownerObject = EDOObjectTransfer.convertToJavaObjectWithJSValue(owner, owner)
-//            (ownerObject as? EDONativeObject)?.let { ownerObject ->
-//                var eageringTypes: List<Class<*>>? = null
-//                var eageringMethod: Method? = null
-//                ownerObject::class.java.methods.forEach {
-//                    if (eageringTypes != null || eageringMethod != null) { return@forEach }
-//                    if (it.name.startsWith(name)) {
-//                        eageringTypes = it.parameterTypes.toList()
-//                        eageringMethod = it
-//                    }
-//                }
-//                val nsArguments = EDOObjectTransfer.convertToJavaListWithJSArray(arguments, owner, eageringTypes)
-//                val returnValue = eageringMethod?.invoke(ownerObject, *nsArguments.toTypedArray())
-//                return EDOObjectTransfer.convertToJSValueWithJavaValue(returnValue, owner.runtime)
-//            }
-//            return V8.getUndefined()
-//        } catch (e: Exception) {
-//            e.printStackTrace()
-//            return V8.getUndefined()
-//        }
-//    }
-//
+
+    fun callMethodWithName(name: String, arguments: V8Array, owner: V8Object): Any {
+        v8CurrentContext = owner.runtime
+        try {
+            val ownerObject = EDOObjectTransfer.convertToJavaObjectWithJSValue(owner, owner) ?: return V8.getUndefined()
+            var eageringTypes: List<Class<*>>? = null
+            var eageringMethod: Method? = null
+            ownerObject::class.java.methods.forEach {
+                if (eageringTypes != null || eageringMethod != null) { return@forEach }
+                if (it.name.startsWith(name)) {
+                    eageringTypes = it.parameterTypes.toList()
+                    eageringMethod = it
+                }
+            }
+            val nsArguments = EDOObjectTransfer.convertToJavaListWithJSArray(arguments, owner, eageringTypes)
+            val returnValue = eageringMethod?.invoke(ownerObject, *nsArguments.toTypedArray())
+            return EDOObjectTransfer.convertToJSValueWithJavaValue(returnValue, owner.runtime)
+        } catch (e: Exception) {
+            return V8.getUndefined()
+        }
+    }
+
     fun javaObjectWithObjectRef(objectRef: String): Any? {
         return EDOV8ExtRuntime.javaObjectWithObjectRef(objectRef)
     }
@@ -254,6 +256,12 @@ class EDOExporter {
     }
 
 
+}
+
+private var v8CurrentContext: V8? = null
+
+fun v8CurrentContext(): V8? {
+    return v8CurrentContext
 }
 
 //fun V8.fetchValue(key: String): Any? {

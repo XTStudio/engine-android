@@ -20,6 +20,7 @@ class PropertyTestObject {
     var arrayValue: List<Any> = listOf()
     var dictValue: Map<String, Any> = mapOf()
     var nilValue: Any? = null
+    var objectValue: FooObject? = null
     var readonlyIntValue: Int = 0
 
 }
