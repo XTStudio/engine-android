@@ -15,6 +15,7 @@ class SamplePackage : EDOPackage() {
         installPropertyTestObject()
         installObjectTestObjects()
         installReturnTestObject()
+        installArgumentTestObject()
     }
 
     private fun installObjectTestObjects() {
@@ -68,6 +69,24 @@ class SamplePackage : EDOPackage() {
         exporter.exportMethodToJavaScript(clazz, "objectValue")
         exporter.exportMethodToJavaScript(clazz, "unexportdClassValue")
         exporter.exportMethodToJavaScript(clazz, "errorValue")
+    }
+
+    private fun installArgumentTestObject() {
+        val clazz = ArgumentTestObject::class.java
+        exporter.exportClass(clazz, "ArgumentTestObject")
+        exporter.exportMethodToJavaScript(clazz, "testIntValue")
+        exporter.exportMethodToJavaScript(clazz, "testFloatValue")
+        exporter.exportMethodToJavaScript(clazz, "testDoubleValue")
+        exporter.exportMethodToJavaScript(clazz, "testBoolValue")
+        exporter.exportMethodToJavaScript(clazz, "testRectValue")
+        exporter.exportMethodToJavaScript(clazz, "testSizeValue")
+        exporter.exportMethodToJavaScript(clazz, "testAffineTransformValue")
+        exporter.exportMethodToJavaScript(clazz, "testStringValue")
+        exporter.exportMethodToJavaScript(clazz, "testArrayValue")
+        exporter.exportMethodToJavaScript(clazz, "testDictValue")
+        exporter.exportMethodToJavaScript(clazz, "testNilValue")
+        exporter.exportMethodToJavaScript(clazz, "testObjectValue")
+        exporter.exportMethodToJavaScript(clazz, "testBlockValue")
     }
 
 }

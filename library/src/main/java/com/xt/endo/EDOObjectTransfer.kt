@@ -74,6 +74,11 @@ class EDOObjectTransfer {
                     }
                     val metaClass = anValue.getObject("_meta_class")
                     if (!metaClass.isUndefined) {
+                        (metaClass.get("classname") as? String)?.takeIf { it == "__Function" }?.let {
+                            val scriptObject = owner?.twin()?.setWeak() as? V8Object ?: return anValue
+                            val idx = metaClass["idx"] as? Int ?: return anValue
+                            return EDOCallback(scriptObject, idx)
+                        }
                         (metaClass.get("objectRef") as? String)?.let {
                             metaClass.release()
                             return EDOExporter.sharedExporter.javaObjectWithObjectRef(it)
@@ -110,8 +115,15 @@ class EDOObjectTransfer {
         fun convertToJavaObjectWithPlainValue(anValue: Any, owner: V8Object?, eageringType: Class<*>? = null): Any? {
             (anValue as? Map<String, Any?>)?.let {
                 (it["_meta_class"] as? Map<String, Any?>)?.let {
-                    val objectRef = it["objectRef"] as? String ?: return anValue
-                    return EDOExporter.sharedExporter.javaObjectWithObjectRef(objectRef)
+                    if (it["classname"] == "__Function") {
+                        val scriptObject = owner?.twin()?.setWeak() as? V8Object ?: return anValue
+                        val idx = it["idx"] as? Int ?: return anValue
+                        return EDOCallback(scriptObject, idx)
+                    }
+                    else {
+                        val objectRef = it["objectRef"] as? String ?: return anValue
+                        return EDOExporter.sharedExporter.javaObjectWithObjectRef(objectRef)
+                    }
                 }
                 return this.convertToJavaObjectWithPlainValue(it, owner)
             }
