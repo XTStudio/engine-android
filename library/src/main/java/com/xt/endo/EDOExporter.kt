@@ -8,6 +8,7 @@ import com.eclipsesource.v8.V8
 import com.eclipsesource.v8.V8Array
 import com.eclipsesource.v8.V8Object
 import com.eclipsesource.v8.V8Value
+import com.xt.jscore.JSContext
 import java.lang.reflect.Method
 
 /**
@@ -22,7 +23,7 @@ class EDOExporter {
             field = value
             value?.registerComponentCallbacks(object : ComponentCallbacks {
                 override fun onLowMemory() {
-//                    runGC(true)
+                    this@EDOExporter.activeContexts.forEach { it.lowMemoryNotification() }
                 }
                 override fun onConfigurationChanged(newConfig: Configuration?) { }
             })
@@ -55,6 +56,10 @@ class EDOExporter {
         private set
 
     private var exportedConstants: Map<String, Any> = mapOf()
+
+    fun exportWithContext(context: JSContext) {
+        this.exportWithContext(context.runtime)
+    }
 
     fun exportWithContext(context: V8) {
         this.activeContexts.add(context)
@@ -323,10 +328,3 @@ private var v8CurrentContext: V8? = null
 fun v8CurrentContext(): V8? {
     return v8CurrentContext
 }
-
-//fun V8.fetchValue(key: String): Any? {
-//    val value = this.get(key) as? V8Object ?: return null
-//    val returnValue = EDOObjectTransfer.convertToJavaObjectWithJSValue(value, value)
-//    value.release()
-//    return returnValue
-//}

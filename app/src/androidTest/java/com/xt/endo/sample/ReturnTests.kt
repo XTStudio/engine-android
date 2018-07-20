@@ -4,6 +4,7 @@ import android.support.test.runner.AndroidJUnit4
 import com.eclipsesource.v8.V8
 import com.xt.endo.EDOExporter
 import com.xt.endo.EDOObjectTransfer
+import com.xt.jscore.JSContext
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.Assert.*
@@ -16,36 +17,36 @@ class ReturnTests {
 
     @Test
     fun testReturns() {
-        val context = V8.createV8Runtime()
+        val context = JSContext()
         EDOExporter.sharedExporter.exportWithContext(context)
-        context.executeObjectScript("var obj = new ReturnTestObject;")
-        assertEquals(context.executeIntegerScript("obj.intValue()"), 1)
-        assertEquals(context.executeDoubleScript("obj.floatValue()").toFloat(), 1.1f)
-        assertEquals(context.executeDoubleScript("obj.doubleValue()"), 1.2, 0.01)
-        assertEquals(context.executeBooleanScript("obj.boolValue()"), true)
-        assertEquals(context.executeBooleanScript("obj.rectValue().x === 1"), true)
-        assertEquals(context.executeBooleanScript("obj.rectValue().y === 2"), true)
-        assertEquals(context.executeBooleanScript("obj.rectValue().width === 3"), true)
-        assertEquals(context.executeBooleanScript("obj.rectValue().height === 4"), true)
-        assertEquals(context.executeBooleanScript("obj.sizeValue().width === 5"), true)
-        assertEquals(context.executeBooleanScript("obj.sizeValue().height === 6"), true)
-        assertEquals(context.executeBooleanScript("obj.affineTransformValue().a === 1"), true)
-        assertEquals(context.executeBooleanScript("obj.affineTransformValue().b === 2"), true)
-        assertEquals(context.executeBooleanScript("obj.affineTransformValue().c === 3"), true)
-        assertEquals(context.executeBooleanScript("obj.affineTransformValue().d === 4"), true)
-        assertEquals(context.executeBooleanScript("obj.affineTransformValue().tx === 55"), true)
-        assertEquals(context.executeBooleanScript("obj.affineTransformValue().ty === 66"), true)
-        assertEquals(context.executeBooleanScript("obj.stringValue() === 'String Value'"), true)
-        assertEquals(context.executeBooleanScript("obj.arrayValue()[0] === 1"), true)
-        assertEquals(context.executeBooleanScript("obj.arrayValue()[1] === 2"), true)
-        assertEquals(context.executeBooleanScript("obj.arrayValue()[2] === 3"), true)
-        assertEquals(context.executeBooleanScript("obj.arrayValue()[3] === 4"), true)
-        assertEquals(context.executeBooleanScript("obj.dictValue()['aKey'] === 'aValue'"), true)
-        assertEquals(context.executeBooleanScript("obj.nilValue() === undefined"), true)
-        assertEquals(context.executeBooleanScript("obj.jsValue()['aKey'] === 'aValue'"), true)
-        assertEquals(context.executeBooleanScript("obj.objectValue() instanceof FooObject"), true)
-        assertEquals(context.executeBooleanScript("obj.unexportdClassValue() instanceof FooObject"), true)
-        assertEquals(context.executeBooleanScript("obj.errorValue().message === 'Error Message.'"), true)
+        context.evaluateScript("var obj = new ReturnTestObject;")
+        assertEquals(context.evaluateScript("obj.intValue()")?.toInt(), 1)
+        assertEquals(context.evaluateScript("obj.floatValue()")?.toDouble()?.toFloat(), 1.1f)
+        assertEquals(context.evaluateScript("obj.doubleValue()")!!.toDouble(), 1.2, 0.01)
+        assertEquals(context.evaluateScript("obj.boolValue()")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.rectValue().x === 1")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.rectValue().y === 2")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.rectValue().width === 3")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.rectValue().height === 4")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.sizeValue().width === 5")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.sizeValue().height === 6")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.affineTransformValue().a === 1")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.affineTransformValue().b === 2")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.affineTransformValue().c === 3")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.affineTransformValue().d === 4")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.affineTransformValue().tx === 55")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.affineTransformValue().ty === 66")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.stringValue() === 'String Value'")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.arrayValue()[0] === 1")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.arrayValue()[1] === 2")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.arrayValue()[2] === 3")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.arrayValue()[3] === 4")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.dictValue()['aKey'] === 'aValue'")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.nilValue() === undefined")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.jsValue()['aKey'] === 'aValue'")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.objectValue() instanceof FooObject")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.unexportdClassValue() instanceof FooObject")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.errorValue().message === 'Error Message.'")?.toBool(), true)
     }
 
 }

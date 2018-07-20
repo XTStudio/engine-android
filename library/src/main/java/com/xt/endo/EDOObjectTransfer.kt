@@ -2,6 +2,7 @@ package com.xt.endo
 
 import com.eclipsesource.v8.*
 import com.eclipsesource.v8.utils.V8ObjectUtils
+import com.xt.jscore.JSValue
 import java.lang.Error
 
 /**
@@ -44,6 +45,12 @@ class EDOObjectTransfer {
 
         fun convertToJSArrayWithJavaList(javaList: List<*>, context: V8): V8Array {
             return V8ObjectUtils.toV8Array(context, javaList.map { this.convertToJSValueWithJavaValue(it, context) })
+        }
+
+        fun convertToJavaObjectWithJSValue(anValue: Any, owner: JSValue?, eageringType: Class<*>? = null): Any? {
+            val tAnValue = (anValue as? JSValue)?.v8Value ?: anValue
+            val tOwner = owner?.v8Value as? V8Object
+            return this.convertToJavaObjectWithJSValue(tAnValue, tOwner, eageringType)
         }
 
         fun convertToJavaObjectWithJSValue(anValue: Any, owner: V8Object?, eageringType: Class<*>? = null): Any? {

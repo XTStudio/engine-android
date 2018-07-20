@@ -5,6 +5,8 @@ import com.eclipsesource.v8.V8
 import com.xt.endo.EDOExporter
 import com.xt.endo.EDOJavaHelper
 import com.xt.endo.EDOObjectTransfer
+import com.xt.jscore.JSContext
+import com.xt.jscore.JSValue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -17,7 +19,7 @@ import org.junit.Assert.*
 @RunWith(AndroidJUnit4::class)
 class ObjectTests {
 
-    val context = V8.createV8Runtime()
+    val context = JSContext()
 
     init {
         setup()
@@ -29,29 +31,29 @@ class ObjectTests {
 
     @Test
     fun testNewInstance() {
-        context.executeScript("var obj = new BarObject")
-        assertEquals(context.executeIntegerScript("obj.intValue"), 1)
+        context.evaluateScript("var obj = new BarObject")
+        assertEquals(context.evaluateScript("obj.intValue")?.toInt(), 1)
     }
 
     @Test
     fun testCustomInstance() {
-        context.executeScript("var obj = new BarObject(123)")
-        assertEquals(context.executeIntegerScript("obj.intValue"), 123)
+        context.evaluateScript("var obj = new BarObject(123)")
+        assertEquals(context.evaluateScript("obj.intValue")?.toInt(), 123)
     }
 
     @Test
     fun testSubclassInstance() {
-        context.executeScript("var obj = new BarObject")
-        assertEquals(context.executeBooleanScript("obj instanceof FooObject"), true)
-        assertEquals(context.executeDoubleScript("obj.floatValue"), 0.1, 0.01)
+        context.evaluateScript("var obj = new BarObject")
+        assertEquals(context.evaluateScript("obj instanceof FooObject")?.toBool(), true)
+        assertEquals(context.evaluateScript("obj.floatValue")!!.toDouble(), 0.1, 0.01)
     }
 
     @Test
     fun testEventEmitter() {
-        val v8Object = context.executeObjectScript("var testEventEmitter = new FooObject; testEventEmitter")
-        val obj = EDOObjectTransfer.convertToJavaObjectWithJSValue(v8Object, v8Object) as FooObject
-        context.executeScript("testEventEmitter.on('click', function(sender){ sender.floatValue = 2.0 })")
-        context.executeScript("testEventEmitter.on('clickTime', function(){ return 1 })")
+        val value = context.evaluateScript("var testEventEmitter = new FooObject; testEventEmitter") as JSValue
+        val obj = EDOObjectTransfer.convertToJavaObjectWithJSValue(value, value) as FooObject
+        context.evaluateScript("testEventEmitter.on('click', function(sender){ sender.floatValue = 2.0 })")
+        context.evaluateScript("testEventEmitter.on('clickTime', function(){ return 1 })")
         EDOJavaHelper.emit(obj, "click", obj)
         assertEquals(obj.floatValue, 2.0f)
         assertEquals(EDOJavaHelper.value(obj, "clickTime") as Int, 1)
@@ -59,9 +61,9 @@ class ObjectTests {
 
     @Test
     fun testBind() {
-        context.executeScript("class SSSObject extends BarObject { bindTest(e) { this.intValue = e; } } ; var obj = new SSSObject")
-        context.executeScript("obj.bindTest(123);")
-        assertEquals(context.executeIntegerScript("obj.intValue"), 123)
+        context.evaluateScript("class SSSObject extends BarObject { bindTest(e) { this.intValue = e; } } ; var obj = new SSSObject")
+        context.evaluateScript("obj.bindTest(123);")
+        assertEquals(context.evaluateScript("obj.intValue")?.toInt(), 123)
     }
 
 }
