@@ -14,7 +14,7 @@ class EDOJavaHelper {
 
         val listeningEvents: WeakHashMap<Any, Set<String>> = WeakHashMap()
 
-        fun emit(obj: Any, eventName: String, vararg arguments: Any) {
+        fun emit(obj: Any, eventName: String, vararg arguments: Any?) {
             if (listeningEvents[obj]?.contains(eventName) != true) { return }
             EDOExporter.sharedExporter.scriptObjectsWithObject(obj).filter { it is V8Object && it.v8Type == 6 }.forEach { scriptObject ->
                 val args = arguments.toList().map { EDOObjectTransfer.convertToJSValueWithJavaValue(it, scriptObject.runtime) }
@@ -26,7 +26,7 @@ class EDOJavaHelper {
             }
         }
 
-        fun value(obj: Any, eventName: String, vararg arguments: Any): Any? {
+        fun value(obj: Any, eventName: String, vararg arguments: Any?): Any? {
             if (listeningEvents[obj]?.contains(eventName) != true) { return null }
             EDOExporter.sharedExporter.scriptObjectsWithObject(obj).firstOrNull { it is V8Object && it.v8Type == 6 }?.let { scriptObject ->
                 val args = arguments.toList().map { EDOObjectTransfer.convertToJSValueWithJavaValue(it, scriptObject.runtime) }
@@ -40,7 +40,7 @@ class EDOJavaHelper {
             return null
         }
 
-        fun invokeBindedMethod(obj: Any, method: String, vararg arguments: Any) {
+        fun invokeBindedMethod(obj: Any, method: String, vararg arguments: Any?) {
             EDOExporter.sharedExporter.scriptObjectsWithObject(obj).forEach {
                 val scriptObject = it as? V8Object ?: return@forEach
                 var v8Array: V8Array? = null
