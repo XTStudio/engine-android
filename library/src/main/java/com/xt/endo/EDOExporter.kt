@@ -4,6 +4,7 @@ import android.content.ComponentCallbacks
 import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.os.Handler
 import com.eclipsesource.v8.V8
 import com.eclipsesource.v8.V8Array
 import com.eclipsesource.v8.V8Object
@@ -56,6 +57,8 @@ class EDOExporter {
         private set
 
     private var exportedConstants: Map<String, Any> = mapOf()
+
+    private val sharedHandler = Handler()
 
     fun exportWithContext(context: JSContext) {
         this.exportWithContext(context.runtime)
@@ -219,6 +222,7 @@ class EDOExporter {
             val newInstance = exportable.initializer?.let { it(EDOObjectTransfer.convertToJavaListWithJSArray(arguments, owner)) } ?: kotlin.run {
                 return@run try { exportable.clazz.getDeclaredConstructor().newInstance() } catch (e: Exception) { null }
             } ?: return V8.getUndefined()
+            sharedHandler.post { newInstance } // Make sure the new instance still exists current loop.
             EDOV8ExtRuntime.extRuntime(owner.runtime).storeScriptObject(newInstance, owner)
             return EDOV8ExtRuntime.extRuntime(owner.runtime).createMetaClass(newInstance)
         }
