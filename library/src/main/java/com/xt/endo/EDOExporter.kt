@@ -188,19 +188,34 @@ class EDOExporter {
 
     fun exportEnum(name: String, values: Map<String, Any>) {
         val exportable = EDOExportable(Any::class.java, name, "ENUM")
-        exportable.exportedScripts = listOf(
-                "var $name;(function ($name) {${
-                values.map {
-                    if (it.value is Number) {
-                        return@map "$name[$name[\"${it.key}\"] = ${it.value}] = \"${it.key}\";"
-                    }
-                    else if (it.value is String) {
-                        return@map "$name[$name[\"${it.key}\"] = \"${it.value}\"] = \"${it.key}\";"
-                    }
-                    return@map ""
-                }.joinToString(";")
-                }})($name || ($name = {}));"
-        )
+        if (values.values.firstOrNull() is Enum<*>) {
+            exportable.exportedScripts = listOf(
+                    "var $name = {}; ${
+                    values.map {
+                        return@map "$name.${it.key} = {_meta_class: {classname: \"__KTENUM\", clazz: \"${it.value::class.java.name}\", value: \"${(it.value as Enum<*>).name}\"}};"
+                    }.joinToString("")
+                    }"
+            )
+        }
+        else {
+            exportable.exportedScripts = listOf(
+                    "var $name;(function ($name) {${
+                    values.map {
+                        if (it.value is Number) {
+                            return@map "$name[$name[\"${it.key}\"] = ${it.value}] = \"${it.key}\";"
+                        }
+                        else if (it.value is String) {
+                            return@map "$name[$name[\"${it.key}\"] = \"${it.value}\"] = \"${it.key}\";"
+                        }
+                        else if (it.value is Enum<*>) {
+                            val e = "$name[$name[\"${it.key}\"] = {_meta_class: {classname: \"__KTENUM\", clazz: \"${it.value::class.java.name}\", value: \"${(it.value as Enum<*>).name}\"}}] = \"${it.key}\";"
+                            return@map "$name[$name[\"${it.key}\"] = {_meta_class: {classname: \"__KTENUM\", clazz: \"${it.value::class.java.name}\", value: \"${(it.value as Enum<*>).name}\"}}] = \"${it.key}\";"
+                        }
+                        return@map ""
+                    }.joinToString(";")
+                    }})($name || ($name = {}));"
+            )
+        }
         this.exportables = kotlin.run {
             val mutable = this.exportables.toMutableMap()
             mutable[name] = exportable

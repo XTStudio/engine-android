@@ -86,6 +86,13 @@ class EDOObjectTransfer {
                             val idx = metaClass["idx"] as? Int ?: return anValue
                             return EDOCallback(scriptObject, idx)
                         }
+                        (metaClass.get("classname") as? String)?.takeIf { it == "__KTENUM" }?.let {
+                            val clazz = metaClass.get("clazz") as? String ?: return null
+                            val value = metaClass.get("value") as? String ?: return null
+                            return try {
+                                Class.forName(clazz).getMethod("valueOf", String::class.java).invoke(clazz, value)
+                            } catch (e: Exception) { null }
+                        }
                         (metaClass.get("objectRef") as? String)?.let {
                             metaClass.release()
                             return EDOExporter.sharedExporter.javaObjectWithObjectRef(it)
