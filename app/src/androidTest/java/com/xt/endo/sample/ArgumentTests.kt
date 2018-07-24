@@ -33,9 +33,10 @@ class ArgumentTests {
         context.evaluateScript("obj.testArrayValue([1,2,3,4])")
         context.evaluateScript("obj.testDictValue({aKey: 'aValue'})")
         context.evaluateScript("obj.testNilValue(undefined)")
+        context.evaluateScript("obj.testNilValue()")
         context.evaluateScript("obj.testObjectValue(new FooObject)")
         context.evaluateScript("obj.testBlockValue(function(r){return r;})")
-        assertEquals(obj.fulfills, 13)
+        assertEquals(obj.fulfills, 14)
     }
 
 }

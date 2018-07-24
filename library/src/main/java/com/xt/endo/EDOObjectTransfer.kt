@@ -4,6 +4,7 @@ import com.eclipsesource.v8.*
 import com.eclipsesource.v8.utils.V8ObjectUtils
 import com.xt.jscore.JSValue
 import java.lang.Error
+import kotlin.math.max
 
 /**
  * Created by cuiminghui on 2018/6/11.
@@ -154,7 +155,7 @@ class EDOObjectTransfer {
         }
 
         fun convertToJavaListWithJSArray(jsArray: V8Array, owner: V8Object?, eageringTypes: List<Class<*>>? = null): List<*> {
-            return (0 until jsArray.length()).map {
+            return (0 until max(jsArray.length(), eageringTypes?.count() ?: 0)).map {
                 val eageringType = if (it < eageringTypes?.count() ?: 0) eageringTypes?.get(it) else null
                 val jsArgument = jsArray.get(it)
                 val returnValue = this.convertToJavaObjectWithJSValue(jsArgument, owner, eageringType)
