@@ -56,6 +56,8 @@ class EDOExporter {
     internal var exportables: Map<String, EDOExportable> = mapOf()
         private set
 
+    private var exportedKeys: Set<String> = setOf()
+
     private var exportedConstants: Map<String, Any> = mapOf()
 
     private val sharedHandler = Handler()
@@ -162,6 +164,21 @@ class EDOExporter {
                 }
             }
         }
+        this.exportedKeys = kotlin.run {
+            val mutable = this.exportedKeys.toMutableSet()
+            mutable.add("${clazz.name}.$propName")
+            return@run mutable.toSet()
+        }
+    }
+
+    fun exportScript(clazz: Class<*>, script: String) {
+        this.exportables.filter { it.value.clazz == clazz }.forEach {
+            it.value.exportedScripts = kotlin.run {
+                val mutable = it.value.exportedScripts.toMutableList()
+                mutable.add(script)
+                return@run mutable.toList()
+            }
+        }
     }
 
     fun bindMethodToJavaScript(clazz: Class<*>, methodName: String) {
@@ -183,6 +200,11 @@ class EDOExporter {
                 mutable[methodName] = aliasName
                 return@run mutable.toMap()
             }
+        }
+        this.exportedKeys = kotlin.run {
+            val mutable = this.exportedKeys.toMutableSet()
+            mutable.add("${clazz.name}.($methodName)")
+            return@run mutable.toSet()
         }
     }
 
@@ -247,6 +269,7 @@ class EDOExporter {
     fun valueWithPropertyName(name: String, owner: V8Object): Any {
         v8CurrentContext = owner.runtime
         EDOObjectTransfer.convertToJavaObjectWithJSValue(owner, owner)?.let { ownerObject ->
+            if (!this.checkExported(ownerObject::class.java, name)) { return V8.getUndefined() }
             try {
                 val returnValue = ownerObject::class.java.getMethod("get" + name.substring(0, 1).toUpperCase() + name.substring(1)).invoke(ownerObject)
                 return EDOObjectTransfer.convertToJSValueWithJavaValue(returnValue, owner.runtime)
@@ -266,6 +289,7 @@ class EDOExporter {
     fun setValueWithPropertyName(name: String, value: Object, owner: V8Object) {
         v8CurrentContext = owner.runtime
         EDOObjectTransfer.convertToJavaObjectWithJSValue(owner, owner)?.let { ownerObject ->
+            if (!this.checkExported(ownerObject::class.java, name)) { return }
             var eageringType: Class<*>? = null
             val setterName = "set" + name.substring(0, 1).toUpperCase() + name.substring(1)
             try {
@@ -295,6 +319,7 @@ class EDOExporter {
         v8CurrentContext = owner.runtime
         try {
             val ownerObject = EDOObjectTransfer.convertToJavaObjectWithJSValue(owner, owner) ?: return V8.getUndefined()
+            if (!this.checkExported(ownerObject::class.java, "($name)")) { return V8.getUndefined() }
             var eageringTypes: List<Class<*>>? = null
             var eageringMethod: Method? = null
             ownerObject::class.java.methods.forEach {
@@ -331,6 +356,24 @@ class EDOExporter {
 
     fun scriptObjectsWithObject(anObject: Any): List<V8Value> {
         return this.activeContexts.map { return@map EDOV8ExtRuntime.extRuntime(it).scriptObjectWithJavaObject(anObject, false) }
+    }
+
+    private fun checkExported(clazz: Class<*>, exportedKey: String): Boolean {
+        var cur: Class<*>? = clazz
+        while (cur != null) {
+            if (this.exportedKeys.contains("${cur.name}.$exportedKey")) {
+                if (cur != clazz) {
+                    this.exportedKeys = kotlin.run {
+                        val mutable = this.exportedKeys.toMutableSet()
+                        mutable.add("${cur!!.name}.$exportedKey")
+                        return@run mutable.toSet()
+                    }
+                }
+                return true
+            }
+            cur = cur.superclass
+        }
+        return false
     }
 
     companion object {
