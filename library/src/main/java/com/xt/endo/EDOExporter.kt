@@ -184,27 +184,7 @@ class EDOExporter {
     }
 
     fun exportStaticProperty(clazz: Class<*>, propName: String, readonly: Boolean = false) {
-        val sPropName = "s.$propName"
-        this.exportables.filter { it.value.clazz == clazz }.forEach {
-            if (it.value.exportedProps.contains(sPropName) || it.value.readonlyProps.contains(sPropName)) { return@forEach }
-            it.value.exportedProps = kotlin.run {
-                val mutable = it.value.exportedProps.toMutableList()
-                mutable.add(sPropName)
-                return@run mutable.toList()
-            }
-            if (readonly) {
-                it.value.readonlyProps = kotlin.run {
-                    val mutable = it.value.readonlyProps.toMutableList()
-                    mutable.add(sPropName)
-                    return@run mutable.toList()
-                }
-            }
-        }
-        this.exportedKeys = kotlin.run {
-            val mutable = this.exportedKeys.toMutableSet()
-            mutable.add("${clazz.name}.$sPropName")
-            return@run mutable.toSet()
-        }
+        this.exportProperty(clazz, "s.$propName", readonly)
     }
 
     fun exportScript(clazz: Class<*>, script: String, isInnerScript: Boolean = true) {
