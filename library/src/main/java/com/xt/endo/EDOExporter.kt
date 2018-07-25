@@ -90,9 +90,15 @@ class EDOExporter {
                 val constructorScript = "function Initializer(isParent){var _this = _super.call(this, __EDO_SUPERCLASS_TOKEN) || this;if(arguments[0]instanceof _EDO_MetaClass){_this._meta_class=arguments[0]}else if(isParent !== __EDO_SUPERCLASS_TOKEN){var args=[];for(var key in arguments){args.push(_this.__convertToJSValue(arguments[key]))}_this._meta_class=ENDO.createInstanceWithNameArgumentsOwner(\"${it.key}\",args,_this)}return _this;}"
                 val propsScript = it.value.exportedProps.map { propName ->
                     if (it.value.readonlyProps.contains(propName)) {
+                        if (propName.startsWith("s.")) {
+                            return@map "Object.defineProperty(Initializer,\"${propName.replace("edo_", "").replace("s.", "")}\",{get:function(){return ENDO.valueWithPropertyNameOwner(\"$propName\",{clazz: \"${it.value.clazz.name}\"})},set:function(value){},enumerable:false,configurable:true});"
+                        }
                         return@map "Object.defineProperty(Initializer.prototype,\"${propName.replace("edo_", "")}\",{get:function(){return ENDO.valueWithPropertyNameOwner(\"$propName\",this)},set:function(value){},enumerable:false,configurable:true});"
                     }
                     else {
+                        if (propName.startsWith("s.")) {
+                            return@map "Object.defineProperty(Initializer,\"${propName.replace("edo_", "").replace("s.", "")}\",{get:function(){return ENDO.valueWithPropertyNameOwner(\"$propName\",{clazz: \"${it.value.clazz.name}\"})},set:function(value){ENDO.setValueWithPropertyNameValueOwner(\"$propName\",value,{clazz: \"${it.value.clazz.name}\"})},enumerable:false,configurable:true});"
+                        }
                         return@map "Object.defineProperty(Initializer.prototype,\"${propName.replace("edo_", "")}\",{get:function(){return ENDO.valueWithPropertyNameOwner(\"$propName\",this)},set:function(value){ENDO.setValueWithPropertyNameValueOwner(\"$propName\",value,this)},enumerable:false,configurable:true});"
                     }
                 }.joinToString(";")
@@ -173,6 +179,30 @@ class EDOExporter {
         this.exportedKeys = kotlin.run {
             val mutable = this.exportedKeys.toMutableSet()
             mutable.add("${clazz.name}.$propName")
+            return@run mutable.toSet()
+        }
+    }
+
+    fun exportStaticProperty(clazz: Class<*>, propName: String, readonly: Boolean = false) {
+        val sPropName = "s.$propName"
+        this.exportables.filter { it.value.clazz == clazz }.forEach {
+            if (it.value.exportedProps.contains(sPropName) || it.value.readonlyProps.contains(sPropName)) { return@forEach }
+            it.value.exportedProps = kotlin.run {
+                val mutable = it.value.exportedProps.toMutableList()
+                mutable.add(sPropName)
+                return@run mutable.toList()
+            }
+            if (readonly) {
+                it.value.readonlyProps = kotlin.run {
+                    val mutable = it.value.readonlyProps.toMutableList()
+                    mutable.add(sPropName)
+                    return@run mutable.toList()
+                }
+            }
+        }
+        this.exportedKeys = kotlin.run {
+            val mutable = this.exportedKeys.toMutableSet()
+            mutable.add("${clazz.name}.$sPropName")
             return@run mutable.toSet()
         }
     }
@@ -285,6 +315,18 @@ class EDOExporter {
 
     fun valueWithPropertyName(name: String, owner: V8Object): Any {
         v8CurrentContext = owner.runtime
+        if (name.startsWith("s.")) {
+            return try {
+                val clazz = Class.forName(owner.getString("clazz"))
+                if (!this.checkExported(clazz, name)) { return V8.getUndefined() }
+                val field = clazz.getDeclaredField(name.replace("s.", ""))
+                field.isAccessible = true
+                val returnValue = field.get(clazz)
+                EDOObjectTransfer.convertToJSValueWithJavaValue(returnValue, owner.runtime)
+            } catch (e: Exception) {
+                V8.getUndefined()
+            }
+        }
         EDOObjectTransfer.convertToJavaObjectWithJSValue(owner, owner)?.let { ownerObject ->
             if (!this.checkExported(ownerObject::class.java, name)) { return V8.getUndefined() }
             try {
@@ -305,6 +347,17 @@ class EDOExporter {
 
     fun setValueWithPropertyName(name: String, value: Object, owner: V8Object) {
         v8CurrentContext = owner.runtime
+        if (name.startsWith("s.")) {
+            return try {
+                val clazz = Class.forName(owner.getString("clazz"))
+                if (!this.checkExported(clazz, name)) { return }
+                val field = clazz.getDeclaredField(name.replace("s.", ""))
+                var eageringType: Class<*> = field.type
+                field.isAccessible = true
+                val nsValue = EDOObjectTransfer.convertToJavaObjectWithJSValue(value, owner, eageringType) ?: return
+                field.set(clazz, nsValue)
+            } catch (e: Exception) { }
+        }
         EDOObjectTransfer.convertToJavaObjectWithJSValue(owner, owner)?.let { ownerObject ->
             if (!this.checkExported(ownerObject::class.java, name)) { return }
             var eageringType: Class<*>? = null

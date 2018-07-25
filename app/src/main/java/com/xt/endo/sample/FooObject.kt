@@ -7,4 +7,12 @@ open class FooObject {
 
     var floatValue: Float = 0.1f
 
+    companion object {
+
+        @JvmStatic var staticValue: Float = 0.2f
+
+        @JvmStatic val staticFoo2: FooObject = FooObject()
+
+    }
+
 }
