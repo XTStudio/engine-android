@@ -66,4 +66,9 @@ class ObjectTests {
         assertEquals(context.evaluateScript("obj.intValue")?.toInt(), 123)
     }
 
+    @Test
+    fun testStatic() {
+        assertEquals(context.evaluateScript("FooObject.staticFoo.floatValue")?.toDouble() as Double, 0.1, 0.01)
+    }
+
 }

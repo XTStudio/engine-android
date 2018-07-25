@@ -16,6 +16,7 @@ class EDOExportable {
     var readonlyProps: List<String> = listOf()
     var bindedMethods: List<String> = listOf()
     var exportedMethods: Map<String, String> = mapOf()
+    var innerScripts: List<String> = listOf()
     var exportedScripts: List<String> = listOf()
 
     constructor(clazz: Class<*>, name: String, superName: String) {

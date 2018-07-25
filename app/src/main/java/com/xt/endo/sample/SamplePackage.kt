@@ -21,6 +21,7 @@ class SamplePackage : EDOPackage() {
     private fun installObjectTestObjects() {
         exporter.exportClass(FooObject::class.java, "FooObject")
         exporter.exportProperty(FooObject::class.java, "floatValue")
+        exporter.exportScript(FooObject::class.java, "FooObject.staticFoo = new FooObject()")
         exporter.exportClass(BarObject::class.java, "BarObject", "FooObject")
         exporter.exportProperty(BarObject::class.java, "intValue")
         exporter.exportInitializer(BarObject::class.java, {
