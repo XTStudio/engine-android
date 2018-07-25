@@ -1,5 +1,6 @@
 package com.xt.endo
 
+import com.eclipsesource.v8.V8
 import com.eclipsesource.v8.V8Array
 import com.eclipsesource.v8.V8Object
 import java.util.*
@@ -21,7 +22,9 @@ class EDOJavaHelper {
                 var v8Array = V8Array(scriptObject.runtime)
                 v8Array.push(eventName)
                 args.forEach { v8Array.push(it) }
-                (scriptObject as V8Object).executeFunction("emit", v8Array)
+                try {
+                    (scriptObject as V8Object).executeFunction("emit", v8Array)
+                } catch (e: Exception) { }
                 v8Array?.release()
             }
         }
@@ -33,7 +36,9 @@ class EDOJavaHelper {
                 var v8Array = V8Array(scriptObject.runtime)
                 v8Array.push(eventName)
                 args.forEach { v8Array.push(it) }
-                val returnValue = (scriptObject as V8Object).executeFunction("val", v8Array)
+                val returnValue = try {
+                    (scriptObject as V8Object).executeFunction("val", v8Array)
+                } catch (e: Exception) { V8.getUndefined() }
                 v8Array?.release()
                 return EDOObjectTransfer.convertToJavaObjectWithJSValue(returnValue, returnValue as? V8Object)
             }
@@ -48,7 +53,9 @@ class EDOJavaHelper {
                 if (args.count() > 0) {
                     v8Array = EDOObjectTransfer.convertToJSArrayWithJavaList(args, scriptObject.runtime)
                 }
-                scriptObject.executeFunction("__$method", v8Array)
+                try {
+                    scriptObject.executeFunction("__$method", v8Array)
+                } catch (e: Exception) {}
                 v8Array?.release()
             }
         }

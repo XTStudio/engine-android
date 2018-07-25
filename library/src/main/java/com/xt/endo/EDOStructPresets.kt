@@ -20,7 +20,9 @@ class EDOCallback(private val scriptObject: V8Object, private val idx: Int) {
         val v8Array = V8Array(scriptObject.runtime)
         v8Array.push(idx)
         v8Array.push(EDOObjectTransfer.convertToJSArrayWithJavaList(arguments.toList(), scriptObject.runtime))
-        val result = scriptObject.executeFunction("__invokeCallback", v8Array)
+        val result = try {
+            scriptObject.executeFunction("__invokeCallback", v8Array)
+        } catch (e: Exception) { V8.getUndefined() }
         v8Array.release()
         return EDOObjectTransfer.convertToJavaObjectWithJSValue(result, result as? V8Object)
     }
