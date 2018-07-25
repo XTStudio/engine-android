@@ -102,7 +102,10 @@ class EDOExporter {
                 val methodScript = it.value.exportedMethods.map {
                     return@map "Initializer.prototype.${it.value} = function () {var args=[];for(var key in arguments){args.push(this.__convertToJSValue(arguments[key]))}return ENDO.callMethodWithNameArgumentsOwner(\"${it.key}\", args, this);};"
                 }.joinToString(";")
-                val clazzScript = ";var ${it.key} = /** @class */ (function (_super) {;__extends(Initializer, _super) ;$constructorScript; $propsScript ;$bindMethodScript ;$methodScript;return Initializer; }(${it.value.superName}));"
+                val scriptsScript = it.value.exportedScripts.map {
+                    return@map ";$it;"
+                }.joinToString { ";" }
+                val clazzScript = ";var ${it.key} = /** @class */ (function (_super) {;__extends(Initializer, _super) ;$constructorScript; $propsScript ;$bindMethodScript ;$methodScript; $scriptsScript;return Initializer; }(${it.value.superName}));"
                 script += clazzScript
                 exported.add(it.value.name)
                 exportables.remove(it.key)
