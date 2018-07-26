@@ -135,6 +135,13 @@ class EDOObjectTransfer {
                         val idx = it["idx"] as? Int ?: return anValue
                         return EDOCallback(scriptObject, idx)
                     }
+                    if (it["classname"] == "__KTENUM") {
+                        val clazz = it["clazz"] as? String ?: return null
+                        val value = it["value"] as? String ?: return null
+                        return try {
+                            Class.forName(clazz).getMethod("valueOf", String::class.java).invoke(clazz, value)
+                        } catch (e: Exception) { null }
+                    }
                     else {
                         val objectRef = it["objectRef"] as? String ?: return anValue
                         return EDOExporter.sharedExporter.javaObjectWithObjectRef(objectRef)
