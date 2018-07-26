@@ -135,7 +135,7 @@ class EDOObjectTransfer {
                         val idx = it["idx"] as? Int ?: return anValue
                         return EDOCallback(scriptObject, idx)
                     }
-                    if (it["classname"] == "__KTENUM") {
+                    else if (it["classname"] == "__KTENUM") {
                         val clazz = it["clazz"] as? String ?: return null
                         val value = it["value"] as? String ?: return null
                         return try {
