@@ -106,7 +106,7 @@ class EDOExporter {
                     return@map "Initializer.prototype.$it=function(){};Initializer.prototype.__$it=function(){this.$it.apply(this,arguments)};"
                 }.joinToString(";")
                 val methodScript = it.value.exportedMethods.map {
-                    return@map "Initializer.prototype.${it.value} = function () {var args=[];for(var key in arguments){args.push(this.__convertToJSValue(arguments[key]))}return ENDO.callMethodWithNameArgumentsOwner(\"${it.key}\", args, this);};"
+                    return@map "Initializer.prototype.${it.value.replace("edo_", "")} = function () {var args=[];for(var key in arguments){args.push(this.__convertToJSValue(arguments[key]))}return ENDO.callMethodWithNameArgumentsOwner(\"${it.key}\", args, this);};"
                 }.joinToString(";")
                 val innerScript = it.value.innerScripts.map {
                     return@map ";$it;"
