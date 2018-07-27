@@ -33,10 +33,10 @@ class EDOCallback(private val scriptObject: V8Object?, private val idx: Int) {
 
     companion object {
 
-        fun createWithBlock(block: (arguments: List<Any>) -> Unit) {
+        fun createWithBlock(block: (arguments: List<Any>) -> Unit): EDOCallback {
             val callback = EDOCallback(null, -1)
             callback.nativeBlock = block
-            return
+            return callback
         }
 
     }
