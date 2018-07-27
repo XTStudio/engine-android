@@ -343,7 +343,7 @@ class EDOExporter {
             var eageringType: Class<*>? = null
             if (eageringType == null) {
                 try {
-                    eageringType = ownerObject::class.java.getField(name).type
+                    eageringType = ownerObject::class.java.getDeclaredField(name).type
                 } catch (e: Exception) { }
             }
             if (eageringType == null) {
@@ -357,20 +357,20 @@ class EDOExporter {
             }
             if (eageringType == null) {
                 try {
-                    eageringType = ownerObject::class.java.getField("m" + name.substring(0, 1).toUpperCase() + name.substring(1)).type
+                    eageringType = ownerObject::class.java.getDeclaredField("m" + name.substring(0, 1).toUpperCase() + name.substring(1)).type
                 } catch (e: Exception) { }
             }
             val nsValue = EDOObjectTransfer.convertToJavaObjectWithJSValue(value, owner, eageringType) ?: return
+            try {
+                ownerObject::class.java.getDeclaredField(name).set(ownerObject, nsValue)
+                return
+            } catch (e: Exception) {}
             try {
                 ownerObject::class.java.getMethod("set" + name.substring(0, 1).toUpperCase() + name.substring(1), eageringType ?: nsValue::class.java).invoke(ownerObject, nsValue)
                 return
             } catch (e: Exception) {}
             try {
-                ownerObject::class.java.getField("m" + name.substring(0, 1).toUpperCase() + name.substring(1)).set(ownerObject, nsValue)
-                return
-            } catch (e: Exception) {}
-            try {
-                ownerObject::class.java.getField(name).set(ownerObject, nsValue)
+                ownerObject::class.java.getDeclaredField("m" + name.substring(0, 1).toUpperCase() + name.substring(1)).set(ownerObject, nsValue)
                 return
             } catch (e: Exception) {}
         }
