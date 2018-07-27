@@ -341,14 +341,25 @@ class EDOExporter {
         EDOObjectTransfer.convertToJavaObjectWithJSValue(owner, owner)?.let { ownerObject ->
             if (!this.checkExported(ownerObject::class.java, name)) { return }
             var eageringType: Class<*>? = null
-            val setterName = "set" + name.substring(0, 1).toUpperCase() + name.substring(1)
-            try {
-                ownerObject::class.java.methods.forEach {
-                    if (it.name.startsWith(setterName)) {
-                        eageringType = it.parameterTypes[0]
+            if (eageringType == null) {
+                try {
+                    eageringType = ownerObject::class.java.getField(name).type
+                } catch (e: Exception) { }
+            }
+            if (eageringType == null) {
+                try {
+                    ownerObject::class.java.methods.forEach {
+                        if (it.name == "set" + name.substring(0, 1).toUpperCase() + name.substring(1)) {
+                            eageringType = it.parameterTypes[0]
+                        }
                     }
-                }
-            } catch (e: Exception) {}
+                } catch (e: Exception) {}
+            }
+            if (eageringType == null) {
+                try {
+                    eageringType = ownerObject::class.java.getField("m" + name.substring(0, 1).toUpperCase() + name.substring(1)).type
+                } catch (e: Exception) { }
+            }
             val nsValue = EDOObjectTransfer.convertToJavaObjectWithJSValue(value, owner, eageringType) ?: return
             try {
                 ownerObject::class.java.getMethod("set" + name.substring(0, 1).toUpperCase() + name.substring(1), eageringType ?: nsValue::class.java).invoke(ownerObject, nsValue)

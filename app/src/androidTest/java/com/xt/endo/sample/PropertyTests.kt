@@ -65,6 +65,10 @@ class PropertyTests {
         assertTrue(obj.objectValue is FooObject)
         context.evaluateScript("obj.readonlyIntValue = 2")
         assertNotEquals(obj.readonlyIntValue, 2)
+        context.evaluateScript("obj.enumValue = TestEnum.right")
+        assertEquals(obj.enumValue, TestEnum.right)
+        context.evaluateScript("obj.enumValue = TestEnum.bottom")
+        assertEquals(obj.enumValue, TestEnum.bottom)
     }
 
 }

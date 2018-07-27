@@ -52,6 +52,13 @@ class SamplePackage : EDOPackage() {
         exporter.exportProperty(clazz, "nilValue")
         exporter.exportProperty(clazz, "objectValue")
         exporter.exportProperty(clazz, "readonlyIntValue", true)
+        exporter.exportProperty(clazz, "enumValue")
+        exporter.exportEnum("TestEnum", mapOf(
+                Pair("top", TestEnum.top),
+                Pair("left", TestEnum.left),
+                Pair("bottom", TestEnum.bottom),
+                Pair("right", TestEnum.right)
+        ))
     }
 
     private fun installReturnTestObject() {

@@ -4,6 +4,13 @@ import com.xt.endo.CGAffineTransform
 import com.xt.endo.CGRect
 import com.xt.endo.CGSize
 
+enum class TestEnum {
+    top,
+    left,
+    bottom,
+    right
+}
+
 /**
  * Created by cuiminghui on 2018/7/17.
  */
@@ -22,5 +29,6 @@ class PropertyTestObject {
     var nilValue: Any? = null
     var objectValue: FooObject? = null
     var readonlyIntValue: Int = 0
+    var enumValue: TestEnum = TestEnum.top
 
 }
