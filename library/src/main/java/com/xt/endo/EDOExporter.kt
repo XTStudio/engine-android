@@ -60,6 +60,8 @@ class EDOExporter {
 
     private var exportedConstants: Map<String, Any> = mapOf()
 
+    private var methodsCache: MutableMap<String, Method> = mutableMapOf()
+
     private val sharedHandler = Handler()
 
     fun exportWithContext(context: JSContext) {
@@ -347,13 +349,19 @@ class EDOExporter {
                 } catch (e: Exception) { }
             }
             if (eageringType == null) {
-                try {
-                    ownerObject::class.java.methods.forEach {
-                        if (it.name == "set" + name.substring(0, 1).toUpperCase() + name.substring(1)) {
-                            eageringType = it.parameterTypes[0]
+                methodsCache["${ownerObject::class.java.name}.$name.[setValue]"]?.let {
+                    eageringType = it.parameterTypes[0]
+                } ?: kotlin.run {
+                    try {
+                        ownerObject::class.java.methods.forEach {
+                            if (eageringType != null) { return@forEach }
+                            if (it.name == "set" + name.substring(0, 1).toUpperCase() + name.substring(1)) {
+                                eageringType = it.parameterTypes[0]
+                                methodsCache["${ownerObject::class.java.name}.$name.[setValue]"] = it
+                            }
                         }
-                    }
-                } catch (e: Exception) {}
+                    } catch (e: Exception) {}
+                }
             }
             if (eageringType == null) {
                 try {
@@ -383,11 +391,17 @@ class EDOExporter {
             if (!this.checkExported(ownerObject::class.java, "($name)")) { return V8.getUndefined() }
             var eageringTypes: List<Class<*>>? = null
             var eageringMethod: Method? = null
-            ownerObject::class.java.methods.forEach {
-                if (eageringTypes != null || eageringMethod != null) { return@forEach }
-                if (it.name.startsWith(name)) {
-                    eageringTypes = it.parameterTypes.toList()
-                    eageringMethod = it
+            methodsCache["${ownerObject::class.java.name}.$name"]?.let {
+                eageringTypes = it.parameterTypes.toList()
+                eageringMethod = it
+            } ?: kotlin.run {
+                ownerObject::class.java.methods.forEach {
+                    if (eageringTypes != null || eageringMethod != null) { return@forEach }
+                    if (it.name.startsWith(name)) {
+                        eageringTypes = it.parameterTypes.toList()
+                        eageringMethod = it
+                        methodsCache["${ownerObject::class.java.name}.$name"] = it
+                    }
                 }
             }
             val nsArguments = EDOObjectTransfer.convertToJavaListWithJSArray(arguments, owner, eageringTypes)
