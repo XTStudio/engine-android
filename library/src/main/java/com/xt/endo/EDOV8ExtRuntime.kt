@@ -61,7 +61,7 @@ class EDOV8ExtRuntime(val value: WeakReference<V8>) {
         }
         target?.let { target ->
             initializer?.let { initializer ->
-                val objectMetaClass = context.executeObjectScript("new _EDO_MetaClass('${target.name}', '${anObject.edo_objectRef()}'")
+                val objectMetaClass = context.executeObjectScript("new _EDO_MetaClass('${target.name}', '${anObject.edo_objectRef()}')")
                 val scriptObject = initializer.invokeAndReturnV8Object(objectMetaClass) ?: return V8.getUndefined()
                 soManagedValue[anObject] = scriptObject.twin().setWeak() as? V8Object
                 return scriptObject
