@@ -3,6 +3,7 @@ package com.xt.endo
 import com.eclipsesource.v8.V8
 import com.eclipsesource.v8.V8Array
 import com.eclipsesource.v8.V8Object
+import com.eclipsesource.v8.V8Value
 
 /**
  * Created by cuiminghui on 2018/7/18.
@@ -29,6 +30,19 @@ class EDOCallback(private val scriptObject: V8Object?, private val idx: Int) {
         } catch (e: Exception) { V8.getUndefined() }
         v8Array.release()
         return EDOObjectTransfer.convertToJavaObjectWithJSValue(result, result as? V8Object)
+    }
+
+    internal fun invokeAndReturnV8Object(vararg arguments: Any): V8Value? {
+        nativeBlock?.let { it.invoke(arguments.toList()); return null }
+        val scriptObject = scriptObject ?: return null
+        val v8Array = V8Array(scriptObject.runtime)
+        v8Array.push(idx)
+        v8Array.push(EDOObjectTransfer.convertToJSArrayWithJavaList(arguments.toList(), scriptObject.runtime))
+        val result = try {
+            scriptObject.executeFunction("__invokeCallback", v8Array)
+        } catch (e: Exception) { V8.getUndefined() }
+        v8Array.release()
+        return result as? V8Value
     }
 
     companion object {

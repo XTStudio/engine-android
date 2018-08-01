@@ -410,9 +410,9 @@ class EDOExporter {
         return EDOV8ExtRuntime.javaObjectWithObjectRef(objectRef)
     }
 
-    fun scriptObjectWithObject(anObject: Any, context: V8?): V8Value {
+    fun scriptObjectWithObject(anObject: Any, context: V8?, createdIfNeed: Boolean = false, initializer: EDOCallback? = null): V8Value {
         val context = context ?: return V8.getUndefined()
-        return EDOV8ExtRuntime.extRuntime(context).scriptObjectWithJavaObject(anObject)
+        return EDOV8ExtRuntime.extRuntime(context).scriptObjectWithJavaObject(anObject, createdIfNeed, initializer)
     }
 
     fun scriptObjectsWithObject(anObject: Any): List<V8Value> {

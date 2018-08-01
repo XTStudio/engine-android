@@ -31,11 +31,13 @@ class EDOV8ExtRuntime(val value: WeakReference<V8>) {
     }
 
     fun createMetaClass(anObject: Any): V8Value {
-        val runtime = value.get() ?: return V8.getUndefined()
-        return runtime.executeObjectScript("new _EDO_MetaClass('${anObject::class.java.name}', '${anObject.edo_objectRef()}')")
+        try {
+            val runtime = value.get() ?: return V8.getUndefined()
+            return runtime.executeObjectScript("new _EDO_MetaClass('${anObject::class.java.name}', '${anObject.edo_objectRef()}')")
+        } catch (e: Exception) { return V8.getUndefined() }
     }
 
-    fun scriptObjectWithJavaObject(anObject: Any, createdIfNeed: Boolean = true): V8Value {
+    fun scriptObjectWithJavaObject(anObject: Any, createdIfNeed: Boolean = true, initializer: EDOCallback? = null): V8Value {
         this.soManagedValue[anObject]?.takeIf { !it.isReleased }?.let { return it }
         if (!createdIfNeed) { return V8.getUndefined() }
         val context = this.value.get() ?: return V8.getUndefined()
@@ -58,9 +60,16 @@ class EDOV8ExtRuntime(val value: WeakReference<V8>) {
             }
         }
         target?.let { target ->
-            val scriptObject = context.executeObjectScript("new ${target.name}(new _EDO_MetaClass('${target.name}', '${anObject.edo_objectRef()}'))")
-            soManagedValue[anObject] = scriptObject.twin().setWeak() as? V8Object
-            return scriptObject
+            initializer?.let { initializer ->
+                val objectMetaClass = context.executeObjectScript("new _EDO_MetaClass('${target.name}', '${anObject.edo_objectRef()}'")
+                val scriptObject = initializer.invokeAndReturnV8Object(objectMetaClass) ?: return V8.getUndefined()
+                soManagedValue[anObject] = scriptObject.twin().setWeak() as? V8Object
+                return scriptObject
+            } ?: kotlin.run {
+                val scriptObject = context.executeObjectScript("new ${target.name}(new _EDO_MetaClass('${target.name}', '${anObject.edo_objectRef()}'))")
+                soManagedValue[anObject] = scriptObject.twin().setWeak() as? V8Object
+                return scriptObject
+            }
         }
         return V8.getUndefined()
     }
