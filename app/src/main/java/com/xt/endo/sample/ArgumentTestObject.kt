@@ -4,6 +4,7 @@ import com.xt.endo.CGAffineTransform
 import com.xt.endo.CGRect
 import com.xt.endo.CGSize
 import com.xt.endo.EDOCallback
+import java.nio.ByteBuffer
 
 /**
  * Created by cuiminghui on 2018/7/19.
@@ -118,6 +119,17 @@ class ArgumentTestObject {
 
     fun testBlockValue(value: EDOCallback) {
         if (value.invoke(2) == 2) {
+            fulfills++
+        }
+        else {
+            throw Exception()
+        }
+    }
+
+    fun testArrayBufferValue(value: ByteBuffer) {
+        val byteArray = ByteArray(value.capacity())
+        value.get(byteArray)
+        if (String(byteArray) == "Hello, World!") {
             fulfills++
         }
         else {

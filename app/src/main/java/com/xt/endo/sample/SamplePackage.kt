@@ -79,6 +79,7 @@ class SamplePackage : EDOPackage() {
         exporter.exportMethodToJavaScript(clazz, "objectValue")
         exporter.exportMethodToJavaScript(clazz, "unexportdClassValue")
         exporter.exportMethodToJavaScript(clazz, "errorValue")
+        exporter.exportMethodToJavaScript(clazz, "arrayBufferValue")
     }
 
     private fun installArgumentTestObject() {
@@ -97,6 +98,7 @@ class SamplePackage : EDOPackage() {
         exporter.exportMethodToJavaScript(clazz, "testNilValue")
         exporter.exportMethodToJavaScript(clazz, "testObjectValue")
         exporter.exportMethodToJavaScript(clazz, "testBlockValue")
+        exporter.exportMethodToJavaScript(clazz, "testArrayBufferValue")
     }
 
 }

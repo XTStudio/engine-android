@@ -47,6 +47,7 @@ class ReturnTests {
         assertEquals(context.evaluateScript("obj.objectValue() instanceof FooObject")?.toBool(), true)
         assertEquals(context.evaluateScript("obj.unexportdClassValue() instanceof FooObject")?.toBool(), true)
         assertEquals(context.evaluateScript("obj.errorValue().message === 'Error Message.'")?.toBool(), true)
+        assertEquals(context.evaluateScript("new Uint8Array(obj.arrayBufferValue())[0] === 72")?.toBool(), true)
     }
 
 }

@@ -4,6 +4,7 @@ import com.eclipsesource.v8.*
 import com.eclipsesource.v8.utils.V8ObjectUtils
 import com.xt.jscore.JSValue
 import java.lang.Error
+import java.nio.ByteBuffer
 import kotlin.math.max
 
 /**
@@ -27,6 +28,9 @@ class EDOObjectTransfer {
                 }
                 (anValue as? List<*>)?.let {
                     return this.convertToJSArrayWithJavaList(it, context)
+                }
+                (anValue as? ByteBuffer)?.let {
+                    return V8ArrayBuffer(context, it)
                 }
                 (anValue as? EDOStruct)?.let {
                     return it.toJSObject(context)
@@ -56,22 +60,22 @@ class EDOObjectTransfer {
 
         fun convertToJavaObjectWithJSValue(anValue: Any, owner: V8Object?, eageringType: Class<*>? = null): Any? {
             (anValue as? V8Value)?.let {
-                if (anValue.v8Type == 1) {
+                if (anValue.v8Type == V8Value.INTEGER) {
                     return anValue as? Int ?: 0
                 }
-                else if (anValue.v8Type == 2) {
+                else if (anValue.v8Type == V8Value.DOUBLE) {
                     return anValue as? Double ?: 0.0
                 }
-                else if (anValue.v8Type == 3) {
+                else if (anValue.v8Type == V8Value.BOOLEAN) {
                     return anValue as? Boolean ?: false
                 }
-                else if (anValue.v8Type == 4) {
+                else if (anValue.v8Type == V8Value.STRING) {
                     return anValue as? String ?: ""
                 }
-                else if (anValue.v8Type == 5 && anValue is V8Array) {
+                else if (anValue.v8Type == V8Value.V8_ARRAY && anValue is V8Array) {
                     return this.convertToJavaListWithJSArray(anValue, owner)
                 }
-                else if (anValue.v8Type == 6 && anValue is V8Object) {
+                else if (anValue.v8Type == V8Value.V8_OBJECT && anValue is V8Object) {
                     eageringType?.let { eageringType ->
                         if (EDOStruct::class.java.isAssignableFrom(eageringType)) {
                             try {
@@ -101,6 +105,9 @@ class EDOObjectTransfer {
                     }
                     metaClass.release()
                     return this.convertToJavaMapWithJSDictionary(anValue, owner)
+                }
+                else if (anValue.v8Type == V8Value.V8_ARRAY_BUFFER && anValue is V8ArrayBuffer) {
+                    return anValue.backingStore
                 }
                 else { }
             }

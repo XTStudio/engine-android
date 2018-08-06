@@ -4,6 +4,7 @@ import com.eclipsesource.v8.V8
 import com.eclipsesource.v8.V8Object
 import com.xt.endo.*
 import java.lang.Error
+import java.nio.ByteBuffer
 
 /**
  * Created by cuiminghui on 2018/7/19.
@@ -71,6 +72,13 @@ class ReturnTestObject {
 
     fun errorValue(): Error {
         return Error("Error Message.")
+    }
+
+    fun arrayBufferValue(): ByteBuffer {
+        val byteArray = "Hello, World!".toByteArray()
+        val byteBuffer = ByteBuffer.allocateDirect(byteArray.size)
+        byteBuffer.put(byteArray)
+        return byteBuffer
     }
 
 }

@@ -36,7 +36,8 @@ class ArgumentTests {
         context.evaluateScript("obj.testNilValue()")
         context.evaluateScript("obj.testObjectValue(new FooObject)")
         context.evaluateScript("obj.testBlockValue(function(r){return r;})")
-        assertEquals(obj.fulfills, 14)
+        context.evaluateScript("obj.testArrayBufferValue(new Uint8Array([72,101,108,108,111,44,32,87,111,114,108,100,33]).buffer)")
+        assertEquals(obj.fulfills, 15)
     }
 
 }
