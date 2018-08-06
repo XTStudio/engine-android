@@ -25,6 +25,7 @@ private fun Any.edo_objectRef(): String {
 class EDOV8ExtRuntime(val value: WeakReference<V8>) {
 
     private val soManagedValue: WeakHashMap<Any, V8Object> = WeakHashMap()
+    private val soManagedValue2: WeakHashMap<Any, V8Object> = WeakHashMap()
 
     fun storeScriptObject(anObject: Any, scriptObject: V8Object) {
         soManagedValue[anObject] = scriptObject.twin().setWeak() as? V8Object
@@ -39,6 +40,7 @@ class EDOV8ExtRuntime(val value: WeakReference<V8>) {
 
     fun scriptObjectWithJavaObject(anObject: Any, createdIfNeed: Boolean = true, initializer: EDOCallback? = null): V8Value {
         this.soManagedValue[anObject]?.takeIf { !it.isReleased }?.let { return it }
+        this.soManagedValue2[anObject]?.takeIf { !it.isReleased }?.let { return it }
         if (!createdIfNeed) { return V8.getUndefined() }
         val context = this.value.get() ?: return V8.getUndefined()
         var target: EDOExportable? = null
@@ -64,10 +66,12 @@ class EDOV8ExtRuntime(val value: WeakReference<V8>) {
                 val objectMetaClass = context.executeObjectScript("new _EDO_MetaClass('${target.name}', '${anObject.edo_objectRef()}')")
                 val scriptObject = initializer.invokeAndReturnV8Object(objectMetaClass) ?: return V8.getUndefined()
                 soManagedValue[anObject] = scriptObject.twin().setWeak() as? V8Object
+                soManagedValue2[anObject] = scriptObject.twin().setWeak() as? V8Object
                 return scriptObject
             } ?: kotlin.run {
                 val scriptObject = context.executeObjectScript("new ${target.name}(new _EDO_MetaClass('${target.name}', '${anObject.edo_objectRef()}'))")
                 soManagedValue[anObject] = scriptObject.twin().setWeak() as? V8Object
+                soManagedValue2[anObject] = scriptObject.twin().setWeak() as? V8Object
                 return scriptObject
             }
         }
