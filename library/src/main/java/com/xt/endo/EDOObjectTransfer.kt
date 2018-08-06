@@ -34,7 +34,7 @@ class EDOObjectTransfer {
                 (anValue as? Error)?.let {
                     return context.executeObjectScript("new Error('${it.message ?: ""}')")
                 }
-                return EDOExporter.sharedExporter.scriptObjectWithObject(it, context, true)
+                return EDOExporter.sharedExporter.scriptObjectWithObject(it, context, true).twin()
             }
             return V8.getUndefined()
         }
