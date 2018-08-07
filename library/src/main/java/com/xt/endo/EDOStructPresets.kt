@@ -188,7 +188,7 @@ class UIEdgeInsets(val top: Double, val left: Double, val bottom: Double, val ri
 
 }
 
-class UIRange(val location: Double, val length: Double): EDOStruct {
+class UIRange(val location: Int, val length: Int): EDOStruct {
 
     override fun toJSObject(context: V8): V8Object {
         val v8Object = V8Object(context)
@@ -202,8 +202,8 @@ class UIRange(val location: Double, val length: Double): EDOStruct {
 
         @JvmStatic fun fromJSObject(v8Object: V8Object): EDOStruct {
             return UIRange(
-                    v8Object.getDouble("location"),
-                    v8Object.getDouble("length")
+                    v8Object.getInteger("location"),
+                    v8Object.getInteger("length")
             )
         }
 
