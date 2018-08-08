@@ -69,6 +69,7 @@ class EDOExporter {
     }
 
     fun exportWithContext(context: V8) {
+        if (context.isReleased) { return }
         if (!this.activeContexts.contains(context)) {
             this.activeContexts.add(context)
             this.activeContexts.removeAll { it.isReleased }
