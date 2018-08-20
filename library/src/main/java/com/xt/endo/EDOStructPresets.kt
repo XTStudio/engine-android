@@ -4,6 +4,7 @@ import com.eclipsesource.v8.V8
 import com.eclipsesource.v8.V8Array
 import com.eclipsesource.v8.V8Object
 import com.eclipsesource.v8.V8Value
+import com.xt.jscore.JSContext
 
 /**
  * Created by cuiminghui on 2018/7/18.
@@ -22,6 +23,7 @@ class EDOCallback(private val scriptObject: V8Object?, private val idx: Int) {
     fun invoke(vararg arguments: Any): Any? {
         nativeBlock?.let { it.invoke(arguments.toList()); return null }
         val scriptObject = scriptObject ?: return null
+        JSContext.setCurrentContext(EDOExporter.sharedExporter.contextWithRuntime(scriptObject.runtime))
         val v8Array = V8Array(scriptObject.runtime)
         v8Array.push(idx)
         v8Array.push(EDOObjectTransfer.convertToJSArrayWithJavaList(arguments.toList(), scriptObject.runtime))
@@ -35,6 +37,7 @@ class EDOCallback(private val scriptObject: V8Object?, private val idx: Int) {
     internal fun invokeAndReturnV8Object(vararg arguments: Any): V8Value? {
         nativeBlock?.let { it.invoke(arguments.toList()); return null }
         val scriptObject = scriptObject ?: return null
+        JSContext.setCurrentContext(EDOExporter.sharedExporter.contextWithRuntime(scriptObject.runtime))
         val v8Array = V8Array(scriptObject.runtime)
         v8Array.push(idx)
         v8Array.push(EDOObjectTransfer.convertToJSArrayWithJavaList(arguments.toList(), scriptObject.runtime))

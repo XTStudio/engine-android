@@ -431,7 +431,7 @@ class EDOExporter {
         }
     }
 
-    private fun contextWithRuntime(runtime: V8?): JSContext? {
+    internal fun contextWithRuntime(runtime: V8?): JSContext? {
         val runtime = runtime ?: return null
         return this.activeContexts.firstOrNull { !it.runtime.isReleased && it.runtime == runtime }
     }
