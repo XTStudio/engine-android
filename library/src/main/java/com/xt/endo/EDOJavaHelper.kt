@@ -3,6 +3,7 @@ package com.xt.endo
 import com.eclipsesource.v8.V8
 import com.eclipsesource.v8.V8Array
 import com.eclipsesource.v8.V8Object
+import com.xt.jscore.JSContext
 import java.util.*
 
 /**
@@ -19,6 +20,7 @@ class EDOJavaHelper {
             try {
                 if (listeningEvents[obj]?.contains(eventName) != true) { return }
                 EDOExporter.sharedExporter.scriptObjectsWithObject(obj).filter { it is V8Object && it.v8Type == 6 }.forEach { scriptObject ->
+                    JSContext.setCurrentContext(EDOExporter.sharedExporter.contextWithRuntime(scriptObject.runtime))
                     val args = arguments.toList().map { EDOObjectTransfer.convertToJSValueWithJavaValue(it, scriptObject.runtime) }
                     var v8Array = V8Array(scriptObject.runtime)
                     v8Array.push(eventName)
@@ -35,6 +37,7 @@ class EDOJavaHelper {
             try {
                 if (listeningEvents[obj]?.contains(eventName) != true) { return null }
                 EDOExporter.sharedExporter.scriptObjectsWithObject(obj).firstOrNull { it is V8Object && it.v8Type == 6 }?.let { scriptObject ->
+                    JSContext.setCurrentContext(EDOExporter.sharedExporter.contextWithRuntime(scriptObject.runtime))
                     val args = arguments.toList().map { EDOObjectTransfer.convertToJSValueWithJavaValue(it, scriptObject.runtime) }
                     var v8Array = V8Array(scriptObject.runtime)
                     v8Array.push(eventName)
@@ -53,6 +56,7 @@ class EDOJavaHelper {
             try {
                 EDOExporter.sharedExporter.scriptObjectsWithObject(obj).forEach {
                     val scriptObject = it as? V8Object ?: return@forEach
+                    JSContext.setCurrentContext(EDOExporter.sharedExporter.contextWithRuntime(scriptObject.runtime))
                     var v8Array: V8Array? = null
                     val args = arguments.toList()
                     if (args.count() > 0) {
