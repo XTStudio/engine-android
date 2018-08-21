@@ -517,6 +517,9 @@ class EDOObject extends EventEmitter {
             (callback._meta_class as any).idx = this.__callbacks.length - 1
             return callback
         }
+        if (parameter === null) {
+            return undefined
+        }
         return parameter
     }
 
