@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Handler
+import android.os.SystemClock
+import android.util.Log
 import com.eclipsesource.v8.V8
 import com.eclipsesource.v8.V8Array
 import com.eclipsesource.v8.V8Object
@@ -98,9 +100,9 @@ class EDOExporter {
                         }
                         else {
                             if (propName.startsWith("s.")) {
-                                return@map "Object.defineProperty(Initializer,\"${propName.replace("edo_", "").replace("s.", "")}\",{get:function(){return ENDO.valueWithPropertyNameOwner(\"$propName\",{clazz: \"${it.value.clazz.name}\"})},set:function(value){ENDO.setValueWithPropertyNameValueOwner(\"$propName\",value,{clazz: \"${it.value.clazz.name}\"})},enumerable:false,configurable:true});"
+                                return@map "Object.defineProperty(Initializer,\"${propName.replace("edo_", "").replace("s.", "")}\",{get:function(){return ENDO.valueWithPropertyNameOwner(\"$propName\",{clazz: \"${it.value.clazz.name}\"})},set:function(value){ENDO.setValueWithPropertyNameValueOwner(\"$propName\",value === null ? undefined : value,{clazz: \"${it.value.clazz.name}\"})},enumerable:false,configurable:true});"
                             }
-                            return@map "Object.defineProperty(Initializer.prototype,\"${propName.replace("edo_", "")}\",{get:function(){return ENDO.valueWithPropertyNameOwner(\"$propName\",this)},set:function(value){ENDO.setValueWithPropertyNameValueOwner(\"$propName\",value,this)},enumerable:false,configurable:true});"
+                            return@map "Object.defineProperty(Initializer.prototype,\"${propName.replace("edo_", "")}\",{get:function(){return ENDO.valueWithPropertyNameOwner(\"$propName\",this)},set:function(value){ENDO.setValueWithPropertyNameValueOwner(\"$propName\",this.__convertToJSValue(value),this)},enumerable:false,configurable:true});"
                         }
                     }.joinToString(";")
                     val bindMethodScript = it.value.bindedMethods.map {
@@ -288,6 +290,7 @@ class EDOExporter {
             val newInstance = exportable.initializer?.let { it(EDOObjectTransfer.convertToJavaListWithJSArray(arguments, owner)) } ?: kotlin.run {
                 return@run try { exportable.clazz.getDeclaredConstructor().newInstance() } catch (e: Exception) { null }
             } ?: return V8.getUndefined()
+            owner.registerJavaMethod(newInstance, "toString", "__mockToString", null)
             sharedHandler.post { newInstance } // Make sure the new instance still exists current loop.
             EDOV8ExtRuntime.extRuntime(context).storeScriptObject(newInstance, owner)
             return EDOV8ExtRuntime.extRuntime(context).createMetaClass(newInstance)
@@ -426,8 +429,8 @@ class EDOExporter {
     }
 
     fun scriptObjectsWithObject(anObject: Any): List<V8Value> {
-        return this.activeContexts.filter { !it.runtime.isReleased }.map {
-            return@map EDOV8ExtRuntime.extRuntime(it).scriptObjectWithJavaObject(anObject, false)
+        return this.activeContexts.filter { !it.runtime.isReleased }.mapNotNull {
+            return@mapNotNull EDOV8ExtRuntime.extRuntime(it).scriptObjectWithJavaObject(anObject, false)?.takeIf { it.v8Type == V8.V8_OBJECT }
         }
     }
 

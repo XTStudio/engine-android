@@ -55,13 +55,6 @@ class ReturnTestObject {
         return null
     }
 
-    fun jsValue(): V8Object {
-        val context = v8CurrentContext() ?: return throw Exception("can not get v8CurrentContext.")
-        val v8Object = V8Object(context)
-        v8Object.add("aKey", "aValue")
-        return v8Object
-    }
-
     fun objectValue(): FooObject {
         return FooObject()
     }

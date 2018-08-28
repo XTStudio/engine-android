@@ -43,7 +43,6 @@ class ReturnTests {
         assertEquals(context.evaluateScript("obj.arrayValue()[3] === 4")?.toBool(), true)
         assertEquals(context.evaluateScript("obj.dictValue()['aKey'] === 'aValue'")?.toBool(), true)
         assertEquals(context.evaluateScript("obj.nilValue() === undefined")?.toBool(), true)
-        assertEquals(context.evaluateScript("obj.jsValue()['aKey'] === 'aValue'")?.toBool(), true)
         assertEquals(context.evaluateScript("obj.objectValue() instanceof FooObject")?.toBool(), true)
         assertEquals(context.evaluateScript("obj.unexportdClassValue() instanceof FooObject")?.toBool(), true)
         assertEquals(context.evaluateScript("obj.errorValue().message === 'Error Message.'")?.toBool(), true)

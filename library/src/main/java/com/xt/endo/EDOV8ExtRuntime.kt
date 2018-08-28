@@ -30,7 +30,7 @@ class EDOV8ExtRuntime(val value: WeakReference<JSContext>) {
 
     fun storeScriptObject(anObject: Any, scriptObject: V8Object) {
         if (anObject is V8Value) { return }
-        soManagedValue[anObject] = scriptObject.twin().setWeak() as? V8Object
+        soManagedValue[anObject] = scriptObject.twin() as? V8Object
     }
 
     fun createMetaClass(anObject: Any): V8Value {
@@ -67,11 +67,11 @@ class EDOV8ExtRuntime(val value: WeakReference<JSContext>) {
             initializer?.let { initializer ->
                 val objectMetaClass = context.runtime.executeObjectScript("new _EDO_MetaClass('${target.name}', '${anObject.edo_objectRef()}')")
                 val scriptObject = initializer.invokeAndReturnV8Object(objectMetaClass) ?: return V8.getUndefined()
-                soManagedValue[anObject] = scriptObject.twin().setWeak() as? V8Object
+                soManagedValue[anObject] = scriptObject.twin() as? V8Object
                 return scriptObject
             } ?: kotlin.run {
                 val scriptObject = context.runtime.executeObjectScript("new ${target.name}(new _EDO_MetaClass('${target.name}', '${anObject.edo_objectRef()}'))")
-                soManagedValue[anObject] = scriptObject.twin().setWeak() as? V8Object
+                soManagedValue[anObject] = scriptObject.twin() as? V8Object
                 return scriptObject
             }
         }
