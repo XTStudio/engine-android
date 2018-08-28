@@ -158,7 +158,7 @@ class EDOExporter {
         }
     }
 
-    fun exportInitializer(clazz: Class<*>, initializer: (arguments: List<*>) -> Any) {
+    fun exportInitializer(clazz: Class<*>, initializer: (arguments: List<*>) -> Any?) {
         this.exportables.filter { it.value.clazz == clazz }.forEach {
             it.value.initializer = initializer
         }

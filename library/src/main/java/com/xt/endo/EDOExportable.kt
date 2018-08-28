@@ -11,7 +11,7 @@ class EDOExportable {
     val clazz: Class<*>
     val name: String
     val superName: String
-    var initializer: ((arguments: List<*>) -> Any)? = null
+    var initializer: ((arguments: List<*>) -> Any?)? = null
     var exportedProps: List<String> = listOf()
     var readonlyProps: List<String> = listOf()
     var bindedMethods: List<String> = listOf()
