@@ -371,13 +371,13 @@ class EDOExporter {
                     eageringType = ownerObject::class.java.getDeclaredField("m" + name.substring(0, 1).toUpperCase() + name.substring(1)).type
                 } catch (e: Exception) { }
             }
-            val nsValue = EDOObjectTransfer.convertToJavaObjectWithJSValue(value, owner, eageringType) ?: return
+            val nsValue = EDOObjectTransfer.convertToJavaObjectWithJSValue(value, owner, eageringType)
             try {
                 ownerObject::class.java.getDeclaredField(name).set(ownerObject, nsValue)
                 return
             } catch (e: Exception) {}
             try {
-                ownerObject::class.java.getMethod("set" + name.substring(0, 1).toUpperCase() + name.substring(1), eageringType ?: nsValue::class.java).invoke(ownerObject, nsValue)
+                ownerObject::class.java.getMethod("set" + name.substring(0, 1).toUpperCase() + name.substring(1), eageringType ?: kotlin.run { nsValue?.let { return@run it::class.java } } ?: Object::class.java).invoke(ownerObject, nsValue)
                 return
             } catch (e: Exception) {}
             try {
