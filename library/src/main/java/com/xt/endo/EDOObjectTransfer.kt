@@ -86,21 +86,23 @@ class EDOObjectTransfer {
                     }
                     val metaClass = anValue.getObject("_meta_class")
                     if (!metaClass.isUndefined) {
-                        (metaClass.get("classname") as? String)?.takeIf { it == "__Function" }?.let {
-                            val scriptObject = owner?.twin()?.setWeak() as? V8Object ?: return anValue
-                            val idx = metaClass["idx"] as? Int ?: return anValue
-                            return EDOCallback(scriptObject, idx)
-                        }
-                        (metaClass.get("classname") as? String)?.takeIf { it == "__KTENUM" }?.let {
-                            val clazz = metaClass.get("clazz") as? String ?: return null
-                            val value = metaClass.get("value") as? String ?: return null
-                            return try {
-                                Class.forName(clazz).getMethod("valueOf", String::class.java).invoke(clazz, value)
-                            } catch (e: Exception) { null }
-                        }
                         (metaClass.get("objectRef") as? String)?.let {
                             metaClass.release()
                             return EDOExporter.sharedExporter.javaObjectWithObjectRef(it)
+                        }
+                        (metaClass.get("classname") as? String)?.let { classname ->
+                            if (classname == "__Function") {
+                                val scriptObject = owner?.twin()?.setWeak() as? V8Object ?: return anValue
+                                val idx = metaClass["idx"] as? Int ?: return anValue
+                                return EDOCallback(scriptObject, idx)
+                            }
+                            else if (classname == "__KTENUM") {
+                                val clazz = metaClass.get("clazz") as? String ?: return null
+                                val value = metaClass.get("value") as? String ?: return null
+                                return try {
+                                    Class.forName(clazz).getMethod("valueOf", String::class.java).invoke(clazz, value)
+                                } catch (e: Exception) { null }
+                            }
                         }
                     }
                     metaClass.release()

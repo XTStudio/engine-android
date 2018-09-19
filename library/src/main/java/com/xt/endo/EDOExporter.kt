@@ -13,6 +13,7 @@ import com.eclipsesource.v8.V8Object
 import com.eclipsesource.v8.V8Value
 import com.xt.jscore.JSContext
 import com.xt.uulog.UULog
+import java.lang.reflect.Field
 import java.lang.reflect.Method
 
 /**
@@ -64,6 +65,8 @@ class EDOExporter {
     private var exportedConstants: Map<String, Any> = mapOf()
 
     private var methodsCache: MutableMap<String, Method> = mutableMapOf()
+    private var fieldsCache: MutableMap<String, Field> = mutableMapOf()
+    private var fastRejects: MutableMap<String, Boolean> = mutableMapOf()
 
     private val sharedHandler = Handler()
 
@@ -292,8 +295,11 @@ class EDOExporter {
             val newInstance = exportable.initializer?.let { it(EDOObjectTransfer.convertToJavaListWithJSArray(arguments, owner)) } ?: kotlin.run {
                 return@run try { exportable.clazz.getDeclaredConstructor().newInstance() } catch (e: Exception) { null }
             } ?: return V8.getUndefined()
-            owner.registerJavaMethod(newInstance, "toString", "__mockToString", null)
-            sharedHandler.post { newInstance } // Make sure the new instance still exists current loop.
+            val twinOwner = owner.twin()
+            sharedHandler.post {
+                twinOwner.registerJavaMethod(newInstance, "toString", "__mockToString", null)
+                twinOwner.release()
+            } // Make sure the new instance still exists current loop.
             EDOV8ExtRuntime.extRuntime(context).storeScriptObject(newInstance, owner)
             return EDOV8ExtRuntime.extRuntime(context).createMetaClass(newInstance)
         }
@@ -315,18 +321,42 @@ class EDOExporter {
         }
         EDOObjectTransfer.convertToJavaObjectWithJSValue(owner, owner)?.let { ownerObject ->
             if (!this.checkExported(ownerObject::class.java, name)) { return V8.getUndefined() }
-            try {
-                val returnValue = ownerObject::class.java.getMethod("get" + name.substring(0, 1).toUpperCase() + name.substring(1)).invoke(ownerObject)
-                return EDOObjectTransfer.convertToJSValueWithJavaValue(returnValue, owner.runtime)
-            } catch (e: Exception) { }
-            try {
-                val returnValue = ownerObject::class.java.getField("m" + name.substring(0, 1).toUpperCase() + name.substring(1)).get(ownerObject)
-                return EDOObjectTransfer.convertToJSValueWithJavaValue(returnValue, owner.runtime)
-            } catch (e: Exception) { }
-            try {
-                val returnValue = ownerObject::class.java.getField(name).get(ownerObject)
-                return EDOObjectTransfer.convertToJSValueWithJavaValue(returnValue, owner.runtime)
-            } catch (e: Exception) { }
+            val ownerClassName = ownerObject::class.java.name
+            var fKey = "$ownerClassName.$name.[getValue_0]"
+            kotlin.run {
+                if (fastRejects[fKey] == true) { return@run }
+                try {
+                    val method = methodsCache[fKey] ?: ownerObject::class.java.getMethod("get" + name.substring(0, 1).toUpperCase() + name.substring(1))
+                    methodsCache[fKey] = method
+                    val returnValue = method.invoke(ownerObject)
+                    return EDOObjectTransfer.convertToJSValueWithJavaValue(returnValue, owner.runtime)
+                } catch (e: Exception) {
+                    fastRejects[fKey] = true
+                }
+            }
+            fKey = "$ownerClassName.$name.[getValue_1]"
+            kotlin.run {
+                if (fastRejects[fKey] == true) { return@run }
+                try {
+                    val field = fieldsCache[fKey] ?: ownerObject::class.java.getField("m" + name.substring(0, 1).toUpperCase() + name.substring(1))
+                    fieldsCache[fKey] = field
+                    val returnValue = field.get(ownerObject)
+                    return EDOObjectTransfer.convertToJSValueWithJavaValue(returnValue, owner.runtime)
+                } catch (e: Exception) {
+                    fastRejects[fKey] = true
+                }
+            }
+            fKey = "$ownerClassName.$name.[getValue_2]"
+            kotlin.run {
+                try {
+                    val field = fieldsCache[fKey] ?: ownerObject::class.java.getField(name)
+                    fieldsCache[fKey] = field
+                    val returnValue = field.get(ownerObject)
+                    return EDOObjectTransfer.convertToJSValueWithJavaValue(returnValue, owner.runtime)
+                } catch (e: Exception) {
+                    fastRejects[fKey] = true
+                }
+            }
         }
         return V8.getUndefined()
     }
@@ -372,18 +402,52 @@ class EDOExporter {
                 } catch (e: Exception) { }
             }
             val nsValue = EDOObjectTransfer.convertToJavaObjectWithJSValue(value, owner, eageringType)
-            try {
-                ownerObject::class.java.getDeclaredField(name).set(ownerObject, nsValue)
-                return
-            } catch (e: Exception) {}
-            try {
-                ownerObject::class.java.getMethod("set" + name.substring(0, 1).toUpperCase() + name.substring(1), eageringType ?: kotlin.run { nsValue?.let { return@run it::class.java } } ?: Object::class.java).invoke(ownerObject, nsValue)
-                return
-            } catch (e: Exception) {}
-            try {
-                ownerObject::class.java.getDeclaredField("m" + name.substring(0, 1).toUpperCase() + name.substring(1)).set(ownerObject, nsValue)
-                return
-            } catch (e: Exception) {}
+            val ownerClassName = ownerObject::class.java.name
+            var fKey = "$ownerClassName.$name.[setValue_0]"
+            kotlin.run {
+                if (fastRejects[fKey] == true) {
+                    return@run
+                }
+                try {
+                    val field = fieldsCache[fKey] ?: ownerObject::class.java.getDeclaredField(name)
+                    fieldsCache[fKey] = field
+                    field.set(ownerObject, nsValue)
+                    return
+                } catch (e: Exception) {
+                    fastRejects["${ownerObject::class.java.name}.$name.[setValue_0]"] = true
+                }
+            }
+            fKey = "$ownerClassName.$name.[setValue_1]"
+            kotlin.run {
+                if (fastRejects[fKey] == true) {
+                    return@run
+                }
+                try {
+                    val method = methodsCache[fKey]
+                            ?: ownerObject::class.java.getMethod("set" + name.substring(0, 1).toUpperCase() + name.substring(1), eageringType
+                                    ?: kotlin.run { nsValue?.let { return@run it::class.java } }
+                                    ?: Object::class.java)
+                    methodsCache[fKey] = method
+                    method.invoke(ownerObject, nsValue)
+                    return
+                } catch (e: Exception) {
+                    fastRejects[fKey] = true
+                }
+            }
+            fKey = "$ownerClassName.$name.[setValue_2]"
+            kotlin.run {
+                if (fastRejects[fKey] == true) {
+                    return@run
+                }
+                try {
+                    val field = fieldsCache[fKey] ?: ownerObject::class.java.getDeclaredField("m" + name.substring(0, 1).toUpperCase() + name.substring(1))
+                    fieldsCache[fKey] = field
+                    field.set(ownerObject, nsValue)
+                    return
+                } catch (e: Exception) {
+                    fastRejects[fKey] = true
+                }
+            }
         }
     }
 
