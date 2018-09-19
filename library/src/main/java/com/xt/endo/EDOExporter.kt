@@ -296,10 +296,10 @@ class EDOExporter {
                 return@run try { exportable.clazz.getDeclaredConstructor().newInstance() } catch (e: Exception) { null }
             } ?: return V8.getUndefined()
             val twinOwner = owner.twin()
-            sharedHandler.post {
+            context.handler.post {
                 twinOwner.registerJavaMethod(newInstance, "toString", "__mockToString", null)
                 twinOwner.release()
-            } // Make sure the new instance still exists current loop.
+            }
             EDOV8ExtRuntime.extRuntime(context).storeScriptObject(newInstance, owner)
             return EDOV8ExtRuntime.extRuntime(context).createMetaClass(newInstance)
         }

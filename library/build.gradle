@@ -29,7 +29,4 @@ dependencies {
     implementation 'com.eclipsesource.j2v8:j2v8:4.8.2@aar'
     implementation 'com.github.XTStudio:JSCore-Android:0.1.2'
     implementation 'com.github.XTStudio:UULog-Android:0.1.0'
-    testImplementation 'junit:junit:4.12'
-    androidTestImplementation 'com.android.support.test:runner:1.0.2'
-    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
 }
