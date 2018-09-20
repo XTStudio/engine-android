@@ -449,6 +449,7 @@ var __extends = (this && this.__extends) || (function () {
     };
     exports.EventEmitter = EventEmitter;
 }(this || {}));
+var _EDO_valueMaps = new WeakMap();
 var _EDO_MetaClass = /** @class */ (function () {
     function _EDO_MetaClass(classname, objectRef) {
         this.classname = classname;
@@ -485,6 +486,12 @@ var EDOObject = /** @class */ (function (_super) {
     EDOObject.prototype.__invokeCallback = function (idx, args) {
         if (this.__callbacks[idx]) {
             return this.__callbacks[idx].func.apply(this, args);
+        }
+    };
+    EDOObject.prototype.__clearValueCache = function (propName) {
+        var valueMap = _EDO_valueMaps.get(this);
+        if (valueMap !== undefined) {
+            delete valueMap[propName];
         }
     };
     return EDOObject;

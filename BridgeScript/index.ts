@@ -1,5 +1,6 @@
 declare var ENDO: any;
 declare var EventEmitter: any;
+declare var WeakMap: any;
 
 /*!
  * EventEmitter v5.2.4 - git.io/ee
@@ -490,6 +491,8 @@ declare var EventEmitter: any;
 
 }(this || {}));
 
+const _EDO_valueMaps = new WeakMap()
+
 class _EDO_MetaClass {
 
     constructor(readonly classname: string, readonly objectRef: string) { }
@@ -526,6 +529,13 @@ class EDOObject extends EventEmitter {
     __invokeCallback(idx, args) {
         if (this.__callbacks[idx]) {
             return this.__callbacks[idx].func.apply(this, args)
+        }
+    }
+
+    __clearValueCache(propName) {
+        let valueMap = _EDO_valueMaps.get(this)
+        if (valueMap !== undefined) {
+            delete valueMap[propName]
         }
     }
 

@@ -14,6 +14,7 @@ class EDOExportable {
     var initializer: ((arguments: List<*>) -> Any?)? = null
     var exportedProps: List<String> = listOf()
     var readonlyProps: List<String> = listOf()
+    var allowCacheProps: List<String> = listOf()
     var bindedMethods: List<String> = listOf()
     var exportedMethods: Map<String, String> = mapOf()
     var innerScripts: List<String> = listOf()

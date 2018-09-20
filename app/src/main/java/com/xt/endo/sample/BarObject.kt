@@ -8,6 +8,10 @@ import com.xt.endo.EDOJavaHelper
 open class BarObject: FooObject() {
 
     var intValue: Int = 1
+        set(value) {
+            field = value
+            EDOJavaHelper.valueChanged(this, "intValue")
+        }
 
     fun bindTest(value: Int) {
         EDOJavaHelper.invokeBindedMethod(this, "bindTest", value)
