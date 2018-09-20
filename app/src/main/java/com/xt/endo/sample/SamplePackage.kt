@@ -21,11 +21,11 @@ class SamplePackage : EDOPackage() {
     private fun installObjectTestObjects() {
         exporter.exportClass(FooObject::class.java, "FooObject")
         exporter.exportProperty(FooObject::class.java, "floatValue")
-        exporter.exportStaticProperty(FooObject::class.java, "staticValue", false, true)
+        exporter.exportStaticProperty(FooObject::class.java, "staticValue", false, true, true)
         exporter.exportStaticProperty(FooObject::class.java, "staticFoo2", true)
         exporter.exportScript(FooObject::class.java, "FooObject.staticFoo = new FooObject()", false)
         exporter.exportClass(BarObject::class.java, "BarObject", "FooObject")
-        exporter.exportProperty(BarObject::class.java, "intValue", false, true)
+        exporter.exportProperty(BarObject::class.java, "intValue", false, true, true)
         exporter.exportInitializer(BarObject::class.java) {
             val instance = BarObject()
             if (0 < it.count() && it[0] is Number) {

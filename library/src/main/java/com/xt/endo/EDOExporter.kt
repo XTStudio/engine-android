@@ -4,9 +4,6 @@ import android.content.ComponentCallbacks
 import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.os.Handler
-import android.os.SystemClock
-import android.util.Log
 import com.eclipsesource.v8.V8
 import com.eclipsesource.v8.V8Array
 import com.eclipsesource.v8.V8Object
@@ -92,8 +89,8 @@ class EDOExporter {
                     val propsScript = it.value.exportedProps.map { propName ->
                         if (propName.startsWith("s.")) {
                             return@map "Object.defineProperty(Initializer,\"${propName.replace("edo_", "").replace("s.", "")}\",{get:function(){${kotlin.run {
-                                if (it.value.allowCacheProps.contains(propName)) {
-                                    return@run "let valueMap = _EDO_valueMaps.get(Initializer); if (valueMap && valueMap['$propName'] !== undefined) { return valueMap['$propName'].value } else { let value = ENDO.valueWithPropertyNameOwner('$propName',{clazz: '${it.value.clazz.name}'}); if (valueMap === undefined) { valueMap = {}; _EDO_valueMaps.set(Initializer, valueMap); } valueMap['$propName'] = {value: value}; return value }"
+                                if (it.value.allowGetterCacheProps.contains(propName)) {
+                                    return@run "{ let valueMap = _EDO_valueMaps.get(Initializer); if (valueMap && valueMap['$propName'] !== undefined) { return valueMap['$propName'].value } else { let value = ENDO.valueWithPropertyNameOwner('$propName',{clazz: '${it.value.clazz.name}'}); if (valueMap === undefined) { valueMap = {}; _EDO_valueMaps.set(Initializer, valueMap); } valueMap['$propName'] = {value: value}; return value } }"
                                 }
                                 else {
                                     return@run "return ENDO.valueWithPropertyNameOwner('$propName',{clazz: '${it.value.clazz.name}'})"
@@ -103,9 +100,19 @@ class EDOExporter {
                                     return@run ";"
                                 }
                                 else {
-                                    return@run "ENDO.setValueWithPropertyNameValueOwner('$propName',value === null ? undefined : value,{clazz: '${it.value.clazz.name}'});${kotlin.run {
-                                        if (it.value.allowCacheProps.contains(propName)) {
-                                            return@run "let valueMap = _EDO_valueMaps.get(Initializer); if (valueMap !== undefined) { delete valueMap['$propName']; }"
+                                    return@run "${kotlin.run {
+                                        if (it.value.allowSetterCacheProps.contains(propName)) {
+                                            return@run "{ let valueMap = _EDO_valueMaps.get(Initializer); if (valueMap && valueMap['$propName'] !== undefined) { if (valueMap['$propName'].value === value || JSON.stringify(valueMap['$propName'].value) === JSON.stringify(value)) { return; } }; }"
+                                        }
+                                        else {
+                                            return@run ""
+                                        }
+                                    }};ENDO.setValueWithPropertyNameValueOwner('$propName',value === null ? undefined : value,{clazz: '${it.value.clazz.name}'});${kotlin.run {
+                                        if (it.value.allowSetterCacheProps.contains(propName)) {
+                                            return@run "{ let valueMap = _EDO_valueMaps.get(Initializer); if (valueMap === undefined) { valueMap = {}; _EDO_valueMaps.set(Initializer, valueMap); } valueMap['$propName'] = {value: value}; }"
+                                        }
+                                        else if (it.value.allowGetterCacheProps.contains(propName)) {
+                                            return@run "{ let valueMap = _EDO_valueMaps.get(Initializer); if (valueMap !== undefined) { delete valueMap['$propName']; } }"
                                         }
                                         else {
                                             return@run ""
@@ -115,8 +122,8 @@ class EDOExporter {
                             }}},enumerable:false,configurable:true});"
                         }
                         return@map "Object.defineProperty(Initializer.prototype,\"${propName.replace("edo_", "")}\",{get:function(){${kotlin.run {
-                            if (it.value.allowCacheProps.contains(propName)) {
-                                return@run "let valueMap = _EDO_valueMaps.get(this); if (valueMap && valueMap['$propName'] !== undefined) { return valueMap['$propName'].value } else { let value = ENDO.valueWithPropertyNameOwner('$propName',this); if (valueMap === undefined) { valueMap = {}; _EDO_valueMaps.set(this, valueMap); } valueMap['$propName'] = {value: value}; return value }"
+                            if (it.value.allowGetterCacheProps.contains(propName)) {
+                                return@run "{ let valueMap = _EDO_valueMaps.get(this); if (valueMap && valueMap['$propName'] !== undefined) { return valueMap['$propName'].value } else { let value = ENDO.valueWithPropertyNameOwner('$propName',this); if (valueMap === undefined) { valueMap = {}; _EDO_valueMaps.set(this, valueMap); } valueMap['$propName'] = {value: value}; return value } }"
                             }
                             else {
                                 return@run "return ENDO.valueWithPropertyNameOwner('$propName',this)"
@@ -126,9 +133,19 @@ class EDOExporter {
                                 return@run ";"
                             }
                             else {
-                                return@run "ENDO.setValueWithPropertyNameValueOwner('$propName',this.__convertToJSValue(value),this);${kotlin.run {
-                                    if (it.value.allowCacheProps.contains(propName)) {
-                                        return@run "let valueMap = _EDO_valueMaps.get(this); if (valueMap !== undefined) { delete valueMap['$propName']; }"
+                                return@run "${kotlin.run {
+                                    if (it.value.allowSetterCacheProps.contains(propName)) {
+                                        return@run "{ let valueMap = _EDO_valueMaps.get(this); if (valueMap && valueMap['$propName'] !== undefined) { if (valueMap['$propName'].value === value || JSON.stringify(valueMap['$propName'].value) === JSON.stringify(value)) { return; } }; }"
+                                    }
+                                    else {
+                                        return@run ""
+                                    }
+                                }};ENDO.setValueWithPropertyNameValueOwner('$propName',this.__convertToJSValue(value),this);${kotlin.run {
+                                    if (it.value.allowSetterCacheProps.contains(propName)) {
+                                        return@run "{ let valueMap = _EDO_valueMaps.get(this); if (valueMap === undefined) { valueMap = {}; _EDO_valueMaps.set(this, valueMap); } valueMap['$propName'] = {value: value}; }"
+                                    }
+                                    else if (it.value.allowGetterCacheProps.contains(propName)) {
+                                        return@run "{ let valueMap = _EDO_valueMaps.get(this); if (valueMap !== undefined) { delete valueMap['$propName']; } }"
                                     }
                                     else {
                                         return@run ""
@@ -196,7 +213,7 @@ class EDOExporter {
         }
     }
 
-    fun exportProperty(clazz: Class<*>, propName: String, readonly: Boolean = false, allowCache: Boolean = false) {
+    fun exportProperty(clazz: Class<*>, propName: String, readonly: Boolean = false, allowGetterCache: Boolean = false, allowSetterCache: Boolean = false) {
         this.exportables.filter { it.value.clazz == clazz }.forEach {
             if (it.value.exportedProps.contains(propName) || it.value.readonlyProps.contains(propName)) { return@forEach }
             it.value.exportedProps = kotlin.run {
@@ -211,9 +228,16 @@ class EDOExporter {
                     return@run mutable.toList()
                 }
             }
-            if (allowCache) {
-                it.value.allowCacheProps = kotlin.run {
-                    val mutable = it.value.allowCacheProps.toMutableList()
+            if (allowGetterCache) {
+                it.value.allowGetterCacheProps = kotlin.run {
+                    val mutable = it.value.allowGetterCacheProps.toMutableList()
+                    mutable.add(propName)
+                    return@run mutable.toList()
+                }
+            }
+            if (allowSetterCache) {
+                it.value.allowSetterCacheProps = kotlin.run {
+                    val mutable = it.value.allowSetterCacheProps.toMutableList()
                     mutable.add(propName)
                     return@run mutable.toList()
                 }
@@ -226,8 +250,8 @@ class EDOExporter {
         }
     }
 
-    fun exportStaticProperty(clazz: Class<*>, propName: String, readonly: Boolean = false, allowCache: Boolean = false) {
-        this.exportProperty(clazz, "s.$propName", readonly, allowCache)
+    fun exportStaticProperty(clazz: Class<*>, propName: String, readonly: Boolean = false, allowGetterCache: Boolean = false, allowSetterCache: Boolean = false) {
+        this.exportProperty(clazz, "s.$propName", readonly, allowGetterCache, allowSetterCache)
     }
 
     fun exportScript(clazz: Class<*>, script: String, isInnerScript: Boolean = true) {

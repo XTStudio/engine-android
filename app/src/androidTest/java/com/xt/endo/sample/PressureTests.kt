@@ -26,7 +26,7 @@ class PressureTests {
         val startTime = SystemClock.uptimeMillis()
         context.evaluateScript("var a = new BarObject; for(var i = 0; i < 10000; i++) { a.intValue }")
         val usedTime = SystemClock.uptimeMillis() - startTime
-        assert(usedTime < 100)
+        Assert.assertTrue(usedTime < 100)
         context.evaluateScript("a.intValue = 2")
         Assert.assertEquals(context.evaluateScript("a.intValue")!!.toInt(), 2)
     }
@@ -36,9 +36,25 @@ class PressureTests {
         val startTime = SystemClock.uptimeMillis()
         context.evaluateScript("for(var i = 0; i < 10000; i++) { FooObject.staticValue }")
         val usedTime = SystemClock.uptimeMillis() - startTime
-        assert(usedTime < 100)
+        Assert.assertTrue(usedTime < 100)
         context.evaluateScript("FooObject.staticValue = 0.3")
         Assert.assertEquals(context.evaluateScript("FooObject.staticValue")?.toDouble() as Double, 0.3, 0.01)
+    }
+
+    @Test
+    fun testWrite() {
+        val startTime = SystemClock.uptimeMillis()
+        context.evaluateScript("var a = new BarObject; for(var i = 0; i < 10000; i++) { a.intValue = 233 }")
+        val usedTime = SystemClock.uptimeMillis() - startTime
+        Assert.assertTrue(usedTime < 100)
+    }
+
+    @Test
+    fun testStaticWrite() {
+        val startTime = SystemClock.uptimeMillis()
+        context.evaluateScript("for(var i = 0; i < 10000; i++) { FooObject.staticValue = 233 }")
+        val usedTime = SystemClock.uptimeMillis() - startTime
+        Assert.assertTrue(usedTime < 100)
     }
 
 }
