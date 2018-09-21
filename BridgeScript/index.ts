@@ -526,13 +526,52 @@ class EDOObject extends EventEmitter {
         return parameter
     }
 
-    __invokeCallback(idx, args) {
+    __invokeCallback(idx: number, args: any[]) {
         if (this.__callbacks[idx]) {
             return this.__callbacks[idx].func.apply(this, args)
         }
     }
 
-    __clearValueCache(propName) {
+    static __checkCachedValueEqualTo(instance: any, propName: string, newValue: any): boolean {
+        let valueMap = _EDO_valueMaps.get(instance)
+        if (valueMap !== undefined && valueMap[propName] !== undefined) {
+            let cachedValue = valueMap[propName].value
+            if (cachedValue === newValue) {
+                return true
+            }
+            else if (cachedValue instanceof Object && newValue instanceof Object) {
+                let result = true
+                for (const key in cachedValue) {
+                    if (typeof cachedValue[key] === "number") {
+                        if (cachedValue[key] !== newValue[key]) {
+                            result = false
+                            break
+                        }
+                    }
+                    else if (typeof cachedValue[key] === "string") {
+                        if (cachedValue[key] !== newValue[key]) {
+                            result = false
+                            break
+                        }
+                    }
+                    else if (typeof cachedValue[key] === "boolean") {
+                        if (cachedValue[key] !== newValue[key]) {
+                            result = false
+                            break
+                        }
+                    }
+                    else {
+                        result = false
+                        break
+                    }
+                }
+                return result
+            }
+        }
+        return false
+    }
+
+    __clearValueCache(propName: string) {
         let valueMap = _EDO_valueMaps.get(this)
         if (valueMap !== undefined) {
             delete valueMap[propName]

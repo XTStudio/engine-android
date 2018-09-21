@@ -3,6 +3,7 @@ package com.xt.endo.sample
 import com.xt.endo.CGAffineTransform
 import com.xt.endo.CGRect
 import com.xt.endo.CGSize
+import com.xt.endo.EDOJavaHelper
 
 enum class TestEnum {
     top,
@@ -21,6 +22,10 @@ class PropertyTestObject {
     var doubleValue: Double = 0.0
     var boolValue: Boolean = false
     var rectValue: CGRect = CGRect(0.0, 0.0, 0.0, 0.0)
+        set(value) {
+            field = value
+            EDOJavaHelper.valueChanged(this, "rectValue")
+        }
     var sizeValue: CGSize = CGSize(0.0, 0.0)
     var affineTransformValue: CGAffineTransform = CGAffineTransform(1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
     var stringValue: String = ""

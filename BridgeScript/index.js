@@ -488,6 +488,44 @@ var EDOObject = /** @class */ (function (_super) {
             return this.__callbacks[idx].func.apply(this, args);
         }
     };
+    EDOObject.__checkCachedValueEqualTo = function (instance, propName, newValue) {
+        var valueMap = _EDO_valueMaps.get(instance);
+        if (valueMap !== undefined && valueMap[propName] !== undefined) {
+            var cachedValue = valueMap[propName].value;
+            if (cachedValue === newValue) {
+                return true;
+            }
+            else if (cachedValue instanceof Object && newValue instanceof Object) {
+                var result = true;
+                for (var key in cachedValue) {
+                    if (typeof cachedValue[key] === "number") {
+                        if (cachedValue[key] !== newValue[key]) {
+                            result = false;
+                            break;
+                        }
+                    }
+                    else if (typeof cachedValue[key] === "string") {
+                        if (cachedValue[key] !== newValue[key]) {
+                            result = false;
+                            break;
+                        }
+                    }
+                    else if (typeof cachedValue[key] === "boolean") {
+                        if (cachedValue[key] !== newValue[key]) {
+                            result = false;
+                            break;
+                        }
+                    }
+                    else {
+                        result = false;
+                        break;
+                    }
+                }
+                return result;
+            }
+        }
+        return false;
+    };
     EDOObject.prototype.__clearValueCache = function (propName) {
         var valueMap = _EDO_valueMaps.get(this);
         if (valueMap !== undefined) {

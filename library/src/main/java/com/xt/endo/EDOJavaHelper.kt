@@ -17,6 +17,15 @@ class EDOJavaHelper {
         val listeningEvents: WeakHashMap<Any, Set<String>> = WeakHashMap()
 
         fun valueChanged(obj: Any, propName: String) {
+            (obj as? String)?.let { clazzName ->
+                EDOExporter.sharedExporter.activeContexts().forEach {
+                    JSContext.setCurrentContext(EDOExporter.sharedExporter.contextWithRuntime(it.runtime))
+                    try {
+                        it.evaluateScript("delete _EDO_valueMaps.get(${clazzName})['$propName']")
+                    } catch (e: Exception) { }
+                }
+                return
+            }
             EDOExporter.sharedExporter.scriptObjectsWithObject(obj).filter { it is V8Object && it.v8Type == 6 }.forEach { scriptObject ->
                 JSContext.setCurrentContext(EDOExporter.sharedExporter.contextWithRuntime(scriptObject.runtime))
                 try {

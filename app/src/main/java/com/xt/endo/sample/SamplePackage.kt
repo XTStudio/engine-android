@@ -43,7 +43,7 @@ class SamplePackage : EDOPackage() {
         exporter.exportProperty(clazz, "floatValue")
         exporter.exportProperty(clazz, "doubleValue")
         exporter.exportProperty(clazz, "boolValue")
-        exporter.exportProperty(clazz, "rectValue")
+        exporter.exportProperty(clazz, "rectValue", false, true, true)
         exporter.exportProperty(clazz, "sizeValue")
         exporter.exportProperty(clazz, "affineTransformValue")
         exporter.exportProperty(clazz, "stringValue")
