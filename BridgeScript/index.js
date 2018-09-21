@@ -498,8 +498,8 @@ var EDOObject = /** @class */ (function (_super) {
             else if (cachedValue instanceof Object && newValue instanceof Object) {
                 var result = true;
                 for (var key in cachedValue) {
-                    if (typeof cachedValue[key] === "number") {
-                        if (cachedValue[key] !== newValue[key]) {
+                    if (typeof cachedValue[key] === "number" && typeof newValue[key] === "number") {
+                        if (cachedValue[key] !== newValue[key] && Math.abs(cachedValue[key] - newValue[key]) > 0.01) {
                             result = false;
                             break;
                         }
