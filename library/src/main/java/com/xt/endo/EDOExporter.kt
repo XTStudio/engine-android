@@ -391,9 +391,11 @@ class EDOExporter {
                     methodsCache[fKey] = method
                     val returnValue = method.invoke(ownerObject)
                     return EDOObjectTransfer.convertToJSValueWithJavaValue(returnValue, owner.runtime)
-                } catch (e: Exception) {
+                }
+                catch (e: NoSuchMethodException) {
                     fastRejects[fKey] = true
                 }
+                catch (e: Exception) { }
             }
             fKey = "$ownerClassName.$name.[getValue_1]"
             kotlin.run {
@@ -403,9 +405,11 @@ class EDOExporter {
                     fieldsCache[fKey] = field
                     val returnValue = field.get(ownerObject)
                     return EDOObjectTransfer.convertToJSValueWithJavaValue(returnValue, owner.runtime)
-                } catch (e: Exception) {
+                }
+                catch (e: NoSuchFieldException) {
                     fastRejects[fKey] = true
                 }
+                catch (e: Exception) { }
             }
             fKey = "$ownerClassName.$name.[getValue_2]"
             kotlin.run {
@@ -414,8 +418,12 @@ class EDOExporter {
                     fieldsCache[fKey] = field
                     val returnValue = field.get(ownerObject)
                     return EDOObjectTransfer.convertToJSValueWithJavaValue(returnValue, owner.runtime)
-                } catch (e: Exception) {
+                }
+                catch (e: NoSuchFieldException) {
                     fastRejects[fKey] = true
+                }
+                catch (e: Exception) {
+
                 }
             }
         }
@@ -479,26 +487,11 @@ class EDOExporter {
                     fieldsCache[fKey] = field
                     field.set(ownerObject, nsValue)
                     return
-                } catch (e: Exception) {
-                    fastRejects["${ownerObject::class.java.name}.$name.[setValue_0]"] = true
                 }
-            }
-            fKey = "$ownerClassName.$name.[setValue_1]"
-            kotlin.run {
-                if (fastRejects[fKey] == true) {
-                    return@run
-                }
-                try {
-                    val method = methodsCache[fKey]
-                            ?: ownerObject::class.java.getMethod("set" + name.substring(0, 1).toUpperCase() + name.substring(1), eageringType
-                                    ?: kotlin.run { nsValue?.let { return@run it::class.java } }
-                                    ?: Object::class.java)
-                    methodsCache[fKey] = method
-                    method.invoke(ownerObject, nsValue)
-                    return
-                } catch (e: Exception) {
+                catch (e: NoSuchFieldException) {
                     fastRejects[fKey] = true
                 }
+                catch (e: Exception) { }
             }
             fKey = "$ownerClassName.$name.[setValue_2]"
             kotlin.run {
@@ -510,9 +503,26 @@ class EDOExporter {
                     fieldsCache[fKey] = field
                     field.set(ownerObject, nsValue)
                     return
-                } catch (e: Exception) {
+                }
+                catch (e: NoSuchFieldException) {
                     fastRejects[fKey] = true
                 }
+                catch (e: Exception) {
+
+                }
+            }
+            fKey = "$ownerClassName.$name.[setValue_1]"
+            kotlin.run {
+                try {
+                    val method = methodsCache[fKey]
+                            ?: ownerObject::class.java.getMethod("set" + name.substring(0, 1).toUpperCase() + name.substring(1), eageringType
+                                    ?: kotlin.run { nsValue?.let { return@run it::class.java } }
+                                    ?: Object::class.java)
+                    methodsCache[fKey] = method
+                    method.invoke(ownerObject, nsValue)
+                    return
+                }
+                catch (e: Exception) { }
             }
         }
     }
