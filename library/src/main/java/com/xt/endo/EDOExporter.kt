@@ -126,7 +126,7 @@ class EDOExporter {
                         }
                         return@map "Object.defineProperty(Initializer.prototype,'$trimmedPropName',{get:function(){${kotlin.run {
                             if (it.value.allowGetterCacheProps.contains(propName)) {
-                                return@run "{ let valueMap = _EDO_valueMaps.get(this); if (valueMap && valueMap['$trimmedPropName'] !== undefined) { return valueMap['$trimmedPropName'].value } else { let value = ENDO.valueWithPropertyNameOwner('$propName',this); if (valueMap === undefined) { valueMap = {}; _EDO_valueMaps.set(this, valueMap); } valueMap['$trimmedPropName'] = {value: value}; return value } }"
+                                return@run "{ let valueMap = _EDO_valueMaps.get(this); if (valueMap && valueMap['$trimmedPropName'] !== undefined) { return valueMap['$trimmedPropName'].value } else { let value = ENDO.valueWithPropertyNameOwner('$propName.GetterCache',this); if (valueMap === undefined) { valueMap = {}; _EDO_valueMaps.set(this, valueMap); } valueMap['$trimmedPropName'] = {value: value}; return value } }"
                             }
                             else {
                                 return@run "return ENDO.valueWithPropertyNameOwner('$propName',this)"
@@ -367,7 +367,8 @@ class EDOExporter {
         return V8.getUndefined()
     }
 
-    fun valueWithPropertyName(name: String, owner: V8Object): Any {
+    fun valueWithPropertyName(argName: String, owner: V8Object): Any {
+        var name = argName
         if (name.startsWith("s.")) {
             return try {
                 val clazz = Class.forName(owner.getString("clazz"))
@@ -380,8 +381,21 @@ class EDOExporter {
                 V8.getUndefined()
             }
         }
+        val hasGetterCache = name.endsWith(".GetterCache")
+        if (name.endsWith(".GetterCache")) {
+            name = name.replace(".GetterCache", "")
+        }
         EDOObjectTransfer.convertToJavaObjectWithJSValue(owner, owner)?.let { ownerObject ->
             if (!this.checkExported(ownerObject::class.java, name)) { return V8.getUndefined() }
+            if (hasGetterCache) {
+                EDOJavaHelper.cachingProperties[ownerObject]?.let {
+                    it.add(name)
+                } ?: kotlin.run {
+                    val cachingProperties = mutableSetOf<String>()
+                    cachingProperties.add(name)
+                    EDOJavaHelper.cachingProperties[ownerObject] = cachingProperties
+                }
+            }
             val ownerClassName = ownerObject::class.java.name
             var fKey = "$ownerClassName.$name.[getValue_0]"
             kotlin.run {
@@ -444,6 +458,9 @@ class EDOExporter {
         }
         EDOObjectTransfer.convertToJavaObjectWithJSValue(owner, owner)?.let { ownerObject ->
             if (!this.checkExported(ownerObject::class.java, name)) { return }
+            EDOJavaHelper.cachingProperties[ownerObject]?.let {
+                it.remove(name)
+            }
             val ownerClassName = ownerObject::class.java.name
             var eageringType: Class<*>? = null
             typesCache["$ownerClassName.$name.[setValueType]"]?.let {

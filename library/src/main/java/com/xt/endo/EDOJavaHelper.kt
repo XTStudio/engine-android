@@ -1,5 +1,6 @@
 package com.xt.endo
 
+import android.os.SystemClock
 import com.eclipsesource.v8.V8
 import com.eclipsesource.v8.V8Array
 import com.eclipsesource.v8.V8Object
@@ -14,7 +15,8 @@ class EDOJavaHelper {
 
     companion object {
 
-        val listeningEvents: WeakHashMap<Any, Set<String>> = WeakHashMap()
+        internal val listeningEvents: WeakHashMap<Any, Set<String>> = WeakHashMap()
+        internal val cachingProperties: WeakHashMap<Any, MutableSet<String>> = WeakHashMap()
 
         fun valueChanged(obj: Any, propName: String) {
             (obj as? String)?.let { clazzName ->
@@ -26,11 +28,14 @@ class EDOJavaHelper {
                 }
                 return
             }
-            EDOExporter.sharedExporter.scriptObjectsWithObject(obj).filter { it is V8Object && it.v8Type == 6 }.forEach { scriptObject ->
-                JSContext.setCurrentContext(EDOExporter.sharedExporter.contextWithRuntime(scriptObject.runtime))
-                try {
-                    (scriptObject as V8Object).executeJSFunction("__clearValueCache", propName)
-                } catch (e: Exception) { }
+            if (cachingProperties[obj]?.contains(propName) == true) {
+                EDOExporter.sharedExporter.scriptObjectsWithObject(obj).filter { it is V8Object && it.v8Type == 6 }.forEach { scriptObject ->
+                    JSContext.setCurrentContext(EDOExporter.sharedExporter.contextWithRuntime(scriptObject.runtime))
+                    try {
+                        (scriptObject as V8Object).executeJSFunction("__clearValueCache", propName)
+                    } catch (e: Exception) { }
+                }
+                cachingProperties[obj]?.remove(propName)
             }
         }
 
