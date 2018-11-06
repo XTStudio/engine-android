@@ -33,7 +33,7 @@ class EDOFactory {
 
         private var sharedDebugger: EDODebugger? = null
 
-        @JvmStatic fun decodeContextFromAssets(named: String, activity: Activity, debuggerAddress: String, onReadyBlock: (context: JSContext) -> Unit): JSContext {
+        @JvmStatic fun decodeContextFromAssets(named: String, activity: Activity, debuggerAddress: String?, onReadyBlock: (context: JSContext) -> Unit): JSContext {
             sharedDebugger = EDODebugger(activity, debuggerAddress)
             sharedDebugger?.connect({
                 onReadyBlock(it)
