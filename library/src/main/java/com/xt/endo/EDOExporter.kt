@@ -16,7 +16,7 @@ import java.lang.reflect.Method
  * Created by cuiminghui on 2018/6/8.
  */
 
-class EDOExporter {
+open class EDOExporter {
 
     var applicationContext: Context? = null
         private set(value) {
