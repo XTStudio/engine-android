@@ -27,6 +27,6 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'com.eclipsesource.j2v8:j2v8:4.8.2@aar'
-    implementation 'com.github.XTStudio:JSCore-Android:0.1.2'
-    implementation 'com.github.XTStudio:UULog-Android:0.1.0'
+    implementation 'com.squareup.okhttp3:okhttp:3.11.0'
+    implementation 'com.github.xtstudio:jscore-android:0.1.2'
 }
