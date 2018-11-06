@@ -41,8 +41,8 @@ class EDOFactory {
             return this.decodeContextFromAssets(named)
         }
 
-        @JvmStatic fun objectFromContext(context: JSContext, named: String): Any? {
-            val value = context[named]
+        @JvmStatic fun objectFromContext(context: JSContext, named: String? = null): Any? {
+            val value = context[named ?: "main"]
             return EDOObjectTransfer.convertToJavaObjectWithJSValue(value, value)
         }
 
