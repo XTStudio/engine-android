@@ -159,8 +159,13 @@ open class EDOExporter {
                     val bindMethodScript = it.value.bindedMethods.map {
                         return@map "Initializer.prototype.$it=function(){};Initializer.prototype.__$it=function(){this.$it.apply(this,arguments)};"
                     }.joinToString(";")
-                    val methodScript = it.value.exportedMethods.map {
-                        return@map "Initializer.prototype.${it.value.replace("edo_", "")} = function () {var args=[];for(var key in arguments){args.push(this.__convertToJSValue(arguments[key]))}return ENDO.callMethodWithNameArgumentsOwner(\"${it.key}\", args, this);};"
+                    val methodScript = it.value.exportedMethods.map {method ->
+                        if (method.key.startsWith("s.")) {
+                            return@map "Initializer['${method.value.replace("edo_", "")}'] = function () {var args=[];for(var key in arguments){args.push(arguments[key])}return ENDO.callMethodWithNameArgumentsOwner(\"${method.key}\", args, {clazz: '${it.value.clazz.name}'});};"
+                        }
+                        else {
+                            return@map "Initializer.prototype.${method.value.replace("edo_", "")} = function () {var args=[];for(var key in arguments){args.push(this.__convertToJSValue(arguments[key]))}return ENDO.callMethodWithNameArgumentsOwner(\"${method.key}\", args, this);};"
+                        }
                     }.joinToString(";")
                     val innerScript = it.value.innerScripts.map {
                         return@map ";$it;"
@@ -302,6 +307,10 @@ open class EDOExporter {
             mutable.add("${clazz.name}.($methodName)")
             return@run mutable.toSet()
         }
+    }
+
+    fun exportStaticMethodToJavaScript(clazz: Class<*>, methodName: String, aliasName: String = methodName) {
+        this.exportMethodToJavaScript(clazz, "s.$methodName", aliasName)
     }
 
     fun exportEnum(name: String, values: Map<String, Any>) {
@@ -544,6 +553,9 @@ open class EDOExporter {
     }
 
     fun callMethodWithName(name: String, arguments: V8Array, owner: V8Object): Any {
+        if (name.startsWith("s.")) {
+            return this.callStaticMethodWithName(name, arguments, owner)
+        }
         try {
             val ownerObject = EDOObjectTransfer.convertToJavaObjectWithJSValue(owner, owner) ?: return V8.getUndefined()
             if (!this.checkExported(ownerObject::class.java, "($name)")) { return V8.getUndefined() }
@@ -568,6 +580,32 @@ open class EDOExporter {
         } catch (e: Exception) {
             return V8.getUndefined()
         }
+    }
+
+    fun callStaticMethodWithName(name: String, arguments: V8Array, owner: V8Object): Any {
+        try {
+            val clazz = Class.forName(owner.getString("clazz"))
+            if (!this.checkExported(clazz, "($name)")) { return V8.getUndefined() }
+            var eageringTypes: List<Class<*>>? = null
+            var eageringMethod: Method? = null
+            methodsCache["${clazz.name}.$name"]?.let {
+                eageringTypes = it.parameterTypes.toList()
+                eageringMethod = it
+            } ?: kotlin.run {
+                clazz.declaredMethods.forEach {
+                    if (eageringTypes != null || eageringMethod != null) { return@forEach }
+                    if (it.name.startsWith(name.replace("s.", ""))) {
+                        eageringTypes = it.parameterTypes.toList()
+                        eageringMethod = it
+                        methodsCache["${clazz.name}.$name"] = it
+                    }
+                }
+            }
+            val nsArguments = EDOObjectTransfer.convertToJavaListWithJSArray(arguments, owner, eageringTypes)
+            val returnValue = eageringMethod?.invoke(clazz, *nsArguments.toTypedArray())
+            return EDOObjectTransfer.convertToJSValueWithJavaValue(returnValue, owner.runtime)
+        } catch (e: java.lang.Exception) { }
+        return V8.getUndefined()
     }
 
     fun addListenerWithName(name: String, owner: V8Object) {

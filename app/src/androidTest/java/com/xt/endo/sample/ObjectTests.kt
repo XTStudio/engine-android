@@ -73,6 +73,7 @@ class ObjectTests {
         assertEquals(context.evaluateScript("FooObject.staticValue")?.toDouble() as Double, 3.0, 0.01)
         assertEquals(context.evaluateScript("FooObject.staticFoo2.floatValue")?.toDouble() as Double, 0.1, 0.01)
         assertEquals(context.evaluateScript("FooObject.staticFoo.floatValue")?.toDouble() as Double, 0.1, 0.01)
+        assertEquals(context.evaluateScript("FooObject.staticMethod()")?.toInt() as Int, 1)
     }
 
 }

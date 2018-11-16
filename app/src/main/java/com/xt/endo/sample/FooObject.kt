@@ -19,6 +19,10 @@ open class FooObject {
 
         @JvmStatic val staticFoo2: FooObject = FooObject()
 
+        @JvmStatic fun staticMethod(): Int {
+            return 1
+        }
+
     }
 
 }

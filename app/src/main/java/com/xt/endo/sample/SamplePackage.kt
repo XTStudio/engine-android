@@ -23,6 +23,7 @@ class SamplePackage : EDOPackage() {
         exporter.exportProperty(FooObject::class.java, "floatValue")
         exporter.exportStaticProperty(FooObject::class.java, "staticValue", false, true, true)
         exporter.exportStaticProperty(FooObject::class.java, "staticFoo2", true)
+        exporter.exportStaticMethodToJavaScript(FooObject::class.java, "staticMethod")
         exporter.exportScript(FooObject::class.java, "FooObject.staticFoo = new FooObject()", false)
         exporter.exportClass(BarObject::class.java, "BarObject", "FooObject")
         exporter.exportProperty(BarObject::class.java, "intValue", false, true, true)
