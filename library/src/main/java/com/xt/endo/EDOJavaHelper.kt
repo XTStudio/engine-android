@@ -28,7 +28,7 @@ class EDOJavaHelper {
                 }
                 return
             }
-            if (cachingProperties[obj]?.contains(propName) == true) {
+            if (cachingProperties[obj]?.contains(propName) == true || cachingProperties[obj]?.contains("edo_" + propName) == true) {
                 EDOExporter.sharedExporter.scriptObjectsWithObject(obj).filter { it is V8Object && it.v8Type == 6 }.forEach { scriptObject ->
                     JSContext.setCurrentContext(EDOExporter.sharedExporter.contextWithRuntime(scriptObject.runtime))
                     try {
