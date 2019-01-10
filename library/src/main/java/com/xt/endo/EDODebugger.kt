@@ -173,7 +173,6 @@ class EDODebugger(val activity: Activity, remoteAddress: String? = null) {
                 return
             }
         } catch (e: Exception) { }
-        val dialog = this.displayConnectingDialog(callback, fallback)
         this.httpClient.newCall(Request.Builder()
                 .url("http://$remoteAddress/livereload")
                 .get()
@@ -182,10 +181,7 @@ class EDODebugger(val activity: Activity, remoteAddress: String? = null) {
                 if (this@EDODebugger.lastTag == null) {
                     return
                 }
-                Handler(activity.mainLooper).post {
-                    dialog.hide()
-                    fallback()
-                }
+                this@EDODebugger.fetchUpdate(callback)
             }
             override fun onResponse(call: Call?, response: Response?) {
                 if (this@EDODebugger.closed) { return }
