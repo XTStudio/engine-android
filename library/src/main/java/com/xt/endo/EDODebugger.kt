@@ -19,6 +19,7 @@ class EDODebugger(val activity: Activity, remoteAddress: String? = null) {
     private var httpClient = OkHttpClient()
     private var closed = false
     private var lastTag: String? = null
+    private var currentContext: JSContext? = null
     private var contextInitializer: (() -> JSContext)? = null
 
     init {
@@ -152,10 +153,47 @@ class EDODebugger(val activity: Activity, remoteAddress: String? = null) {
                 val script = response?.body()?.string() ?: return
                 Handler(activity.mainLooper).post {
                     val context = this@EDODebugger.contextInitializer?.invoke() ?: JSContext()
+                    this@EDODebugger.currentContext = context
                     EDOExporter.sharedExporter.exportWithContext(context)
                     context.evaluateScript(script)
                     dialog.hide()
                     callback(context)
+                    this@EDODebugger.fetchUpdate(callback)
+                }
+            }
+        })
+    }
+
+    fun livereload(callback: (context: JSContext) -> Unit, fallback: () -> Unit) {
+        try {
+            val clazz = Class.forName(this.activity.packageName + ".BuildConfig")
+            val field = clazz.getField("DEBUG")
+            if (field.get(clazz) as? Boolean != true) {
+                fallback()
+                return
+            }
+        } catch (e: Exception) { }
+        val dialog = this.displayConnectingDialog(callback, fallback)
+        this.httpClient.newCall(Request.Builder()
+                .url("http://$remoteAddress/livereload")
+                .get()
+                .build()).enqueue(object : Callback {
+            override fun onFailure(call: Call?, e: IOException?) {
+                if (this@EDODebugger.lastTag == null) {
+                    return
+                }
+                Handler(activity.mainLooper).post {
+                    dialog.hide()
+                    fallback()
+                }
+            }
+            override fun onResponse(call: Call?, response: Response?) {
+                if (this@EDODebugger.closed) { return }
+                val script = response?.body()?.string() ?: return
+                Handler(activity.mainLooper).post {
+                    this@EDODebugger.currentContext?.let {
+                        it.evaluateScript(script)
+                    }
                     this@EDODebugger.fetchUpdate(callback)
                 }
             }
@@ -180,8 +218,15 @@ class EDODebugger(val activity: Activity, remoteAddress: String? = null) {
                     }
                     else if (this@EDODebugger.lastTag != tag) {
                         this@EDODebugger.lastTag = tag
-                        Handler(activity.mainLooper).post {
-                            this@EDODebugger.connect(callback, {})
+                        if (tag.contains(".reload")) {
+                            Handler(activity.mainLooper).post {
+                                this@EDODebugger.livereload(callback, {})
+                            }
+                        }
+                        else {
+                            Handler(activity.mainLooper).post {
+                                this@EDODebugger.connect(callback, {})
+                            }
                         }
                     }
                     else {
