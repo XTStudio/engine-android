@@ -200,6 +200,7 @@ class EDODebugger(val activity: Activity, remoteAddress: String? = null) {
         Handler(activity.mainLooper).postDelayed({
             this.httpClient.newCall(Request.Builder()
                     .url("http://$remoteAddress/version")
+                    .addHeader("code-version", this.lastTag ?: "undefined")
                     .get()
                     .build()).enqueue(object : Callback {
                 override fun onFailure(call: Call?, e: IOException?) {
