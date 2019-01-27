@@ -6,6 +6,7 @@ import com.eclipsesource.v8.utils.V8ObjectUtils
 import com.xt.jscore.JSContext
 import okhttp3.*
 import org.json.JSONObject
+import java.io.IOException
 import java.lang.Exception
 
 class XTSHttpRequest {
@@ -27,14 +28,14 @@ class XTSHttpRequest {
                     val url = it.getString("url")
                     val header = it.getString("header")
                     val body = it.get("body") as? String ?: ""
-                    val async = it.get("async") as? Boolean ?: true
+                    val async = it.get("async") as? Boolean ?: false
                     val headerBuilder = Headers.Builder()
                     try {
                         val obj = JSONObject(header)
                         obj.keys().forEach {
                             headerBuilder.add(it, obj.optString(it, ""))
                         }
-                    } catch (e: Exception) {}
+                    } catch (e: Exception) { }
                     val request = Request.Builder()
                             .method(method, if (method == "POST") RequestBody.create(MediaType.parse("text/plain; charset=utf-8"), body) else null)
                             .headers(headerBuilder.build())
@@ -47,6 +48,16 @@ class XTSHttpRequest {
                         } catch (e: Exception) {
                             callback?.call(sender, V8ObjectUtils.toV8Array(context, listOf(0, "")))
                         }
+                    }
+                    else {
+                        client.newCall(request).enqueue(object : Callback {
+                            override fun onFailure(call: Call, e: IOException) {
+                                callback?.call(sender, V8ObjectUtils.toV8Array(context, listOf(0, "")))
+                            }
+                            override fun onResponse(call: Call, response: Response) {
+                                callback?.call(sender, V8ObjectUtils.toV8Array(context, listOf(response.code(), response.body()?.string() ?: "")))
+                            }
+                        })
                     }
                 }
             }, "_XTSHttpRequest_send")
