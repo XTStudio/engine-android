@@ -15,7 +15,7 @@ import java.io.IOException
 
 class EDODebugger(val activity: Activity, remoteAddress: String? = null) {
 
-    private var remoteAddress: String = remoteAddress ?: activity.getSharedPreferences("com.xt.engine", Context.MODE_PRIVATE)?.getString("debugger.address", null) ?: "10.0.2.2:8090"
+    private var remoteAddress: String = remoteAddress ?: activity.getSharedPreferences("com.xt.engine", Context.MODE_PRIVATE)?.getString("debugger.address", null) ?: "127.0.0.1:8090"
     private var httpClient = OkHttpClient()
     private var closed = false
     private var lastTag: String? = null
