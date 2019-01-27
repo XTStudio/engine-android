@@ -1,5 +1,6 @@
 package com.xt.endo
 
+import android.os.Handler
 import android.os.StrictMode
 import com.eclipsesource.v8.*
 import com.eclipsesource.v8.utils.V8ObjectUtils
@@ -21,6 +22,7 @@ class XTSHttpRequest {
 
         fun attachTo(context: V8) {
             context.registerJavaMethod({ sender, parameters ->
+                val handler = Handler()
                 StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.Builder().permitAll().build())
                 val callback = parameters.get(1) as? V8Function
                 (parameters.get(0) as? V8Object)?.let {
@@ -52,10 +54,14 @@ class XTSHttpRequest {
                     else {
                         client.newCall(request).enqueue(object : Callback {
                             override fun onFailure(call: Call, e: IOException) {
-                                callback?.call(sender, V8ObjectUtils.toV8Array(context, listOf(0, "")))
+                                handler.post {
+                                    callback?.call(sender, V8ObjectUtils.toV8Array(context, listOf(0, "")))
+                                }
                             }
                             override fun onResponse(call: Call, response: Response) {
-                                callback?.call(sender, V8ObjectUtils.toV8Array(context, listOf(response.code(), response.body()?.string() ?: "")))
+                                handler.post {
+                                    callback?.call(sender, V8ObjectUtils.toV8Array(context, listOf(response.code(), response.body()?.string() ?: "")))
+                                }
                             }
                         })
                     }
