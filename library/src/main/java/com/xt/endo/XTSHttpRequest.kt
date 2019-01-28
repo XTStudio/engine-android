@@ -52,15 +52,21 @@ class XTSHttpRequest {
                         }
                     }
                     else {
+                        val twinSender = sender.twin()
+                        val twinCallback = callback?.twin()
                         client.newCall(request).enqueue(object : Callback {
                             override fun onFailure(call: Call, e: IOException) {
                                 handler.post {
-                                    callback?.call(sender, V8ObjectUtils.toV8Array(context, listOf(0, "")))
+                                    twinCallback?.call(twinSender, V8ObjectUtils.toV8Array(context, listOf(0, "")))
+                                    twinSender.release()
+                                    twinCallback?.release()
                                 }
                             }
                             override fun onResponse(call: Call, response: Response) {
                                 handler.post {
-                                    callback?.call(sender, V8ObjectUtils.toV8Array(context, listOf(response.code(), response.body()?.string() ?: "")))
+                                    twinCallback?.call(twinSender, V8ObjectUtils.toV8Array(context, listOf(response.code(), response.body()?.string() ?: "")))
+                                    twinSender.release()
+                                    twinCallback?.release()
                                 }
                             }
                         })
