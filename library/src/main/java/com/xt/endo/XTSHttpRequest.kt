@@ -9,6 +9,7 @@ import okhttp3.*
 import org.json.JSONObject
 import java.io.IOException
 import java.lang.Exception
+import java.util.concurrent.TimeUnit
 
 class XTSHttpRequest {
 
@@ -29,6 +30,7 @@ class XTSHttpRequest {
                     val method = it.getString("method")
                     val url = it.getString("url")
                     val header = it.getString("header")
+                    val timeout = it.get("timeout") as? Int ?: 60000
                     val body = it.get("body") as? String ?: ""
                     val async = it.get("async") as? Boolean ?: false
                     val headerBuilder = Headers.Builder()
@@ -45,7 +47,12 @@ class XTSHttpRequest {
                             .build()
                     if (!async) {
                         try {
-                            val response = client.newCall(request).execute()
+                            val response = OkHttpClient.Builder()
+                                    .connectTimeout(timeout.toLong(), TimeUnit.MILLISECONDS)
+                                    .readTimeout(timeout.toLong(), TimeUnit.MILLISECONDS)
+                                    .writeTimeout(timeout.toLong(), TimeUnit.MILLISECONDS)
+                                    .build()
+                                    .newCall(request).execute()
                             callback?.call(sender, V8ObjectUtils.toV8Array(context, listOf(response.code(), response.body()?.string() ?: "")))
                         } catch (e: Exception) {
                             callback?.call(sender, V8ObjectUtils.toV8Array(context, listOf(0, "")))
@@ -54,22 +61,28 @@ class XTSHttpRequest {
                     else {
                         val twinSender = sender.twin()
                         val twinCallback = callback?.twin()
-                        client.newCall(request).enqueue(object : Callback {
-                            override fun onFailure(call: Call, e: IOException) {
-                                handler.post {
-                                    twinCallback?.call(twinSender, V8ObjectUtils.toV8Array(context, listOf(0, "")))
-                                    twinSender.release()
-                                    twinCallback?.release()
-                                }
-                            }
-                            override fun onResponse(call: Call, response: Response) {
-                                handler.post {
-                                    twinCallback?.call(twinSender, V8ObjectUtils.toV8Array(context, listOf(response.code(), response.body()?.string() ?: "")))
-                                    twinSender.release()
-                                    twinCallback?.release()
-                                }
-                            }
-                        })
+                        OkHttpClient.Builder()
+                                .connectTimeout(timeout.toLong(), TimeUnit.MILLISECONDS)
+                                .readTimeout(timeout.toLong(), TimeUnit.MILLISECONDS)
+                                .writeTimeout(timeout.toLong(), TimeUnit.MILLISECONDS)
+                                .build()
+                                .newCall(request)
+                                .enqueue(object : Callback {
+                                    override fun onFailure(call: Call, e: IOException) {
+                                        handler.post {
+                                            twinCallback?.call(twinSender, V8ObjectUtils.toV8Array(context, listOf(0, "")))
+                                            twinSender.release()
+                                            twinCallback?.release()
+                                        }
+                                    }
+                                    override fun onResponse(call: Call, response: Response) {
+                                        handler.post {
+                                            twinCallback?.call(twinSender, V8ObjectUtils.toV8Array(context, listOf(response.code(), response.body()?.string() ?: "")))
+                                            twinSender.release()
+                                            twinCallback?.release()
+                                        }
+                                    }
+                                })
                     }
                 }
             }, "_XTSHttpRequest_send")
@@ -90,7 +103,7 @@ class XTSHttpRequest {
                     "    }\n" +
                     "\n" +
                     "    send(data) {\n" +
-                    "        _XTSHttpRequest_send({ method: this.method, url: this.url, async: this.async, header: JSON.stringify(this.header), body: data }, (status, responseText) => {\n" +
+                    "        _XTSHttpRequest_send({ method: this.method, url: this.url, async: this.async, timeout: this.timeout, header: JSON.stringify(this.header), body: data }, (status, responseText) => {\n" +
                     "            this.status = status\n" +
                     "            this.responseText = responseText\n" +
                     "            if (this.onloadend) { this.onloadend(); }" +
