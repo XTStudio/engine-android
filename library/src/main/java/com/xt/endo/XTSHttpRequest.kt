@@ -93,6 +93,7 @@ class XTSHttpRequest {
                     "        _XTSHttpRequest_send({ method: this.method, url: this.url, async: this.async, header: JSON.stringify(this.header), body: data }, (status, responseText) => {\n" +
                     "            this.status = status\n" +
                     "            this.responseText = responseText\n" +
+                    "            if (this.onloadend) { this.onloadend(); }" +
                     "        })\n" +
                     "    }\n" +
                     "\n" +
