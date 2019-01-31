@@ -15,8 +15,6 @@ class XTSHttpRequest {
 
     companion object {
 
-        val client = OkHttpClient()
-
         fun attachTo(context: JSContext) {
             this.attachTo(context.runtime)
         }

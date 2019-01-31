@@ -155,6 +155,7 @@ class EDODebugger(val activity: Activity, remoteAddress: String? = null) {
                     val context = this@EDODebugger.contextInitializer?.invoke() ?: JSContext()
                     this@EDODebugger.currentContext = context
                     EDOExporter.sharedExporter.exportWithContext(context)
+                    context.evaluateScript("var \$__ConnectorHostname = '${remoteAddress.split(":").get(0)}'")
                     context.evaluateScript(script)
                     dialog.hide()
                     callback(context)
